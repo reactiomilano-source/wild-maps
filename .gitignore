@@ -1,0 +1,29 @@
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+Desktop.ini
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log
+
+# Archives
+*.zip
+
+# Composer
+vendor/
+
+# Node
+node_modules/
+
+# Temporary
+tmp/
+temp/
+
+# Backup
+*.bak
