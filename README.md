@@ -1,33 +1,73 @@
 # Wild Maps
 
-Professional Route & Roadbook Builder for WordPress + Elementor.
+> **Professional Route & Roadbook Platform for WordPress**
 
-Wild Maps lets you create interactive travel maps, route projects, POI, roadbooks and printable itineraries directly inside WordPress.
+**Build. Explore. Share.**
+
+Wild Maps is a professional WordPress platform designed to create interactive maps, travel routes, POI, and printable roadbooks for expeditions, tours, overland journeys and outdoor adventures.
+
+---
+
+## Core Modules
+
+### 🗺 Route Builder
+Create and edit routes directly on the map.
+
+### 📍 POI Manager
+Manage unlimited points of interest with categories, SVG icons and labels.
+
+### 📖 Roadbook Generator
+Generate printable roadbooks with route summaries and driving directions.
+
+### 🧭 Routing Engine
+Powered by OpenRouteService for automatic route calculation.
+
+### 🎨 Elementor Integration
+Display interactive maps anywhere using the Wild Maps Elementor widget.
+
+---
 
 ## Features
 
-- Elementor widget
-- Route projects
-- POI management
-- OpenRouteService routing
-- GeoJSON route support
-- Roadbook print/PDF layout
-- Fullscreen map support
-- Manual and backend POI
-- SVG custom icons
-- Elementor Free and Pro compatible
+- Interactive Route Builder
+- POI Categories
+- GeoJSON Support
+- OpenRouteService Integration
+- Printable Roadbooks
+- PDF Export
+- Fullscreen Maps
+- Custom SVG Icons
+- Elementor Free & Pro Compatible
+
+---
 
 ## Requirements
 
-- WordPress
-- Elementor Free or Elementor Pro
+- WordPress 6.x+
 - PHP 8.0+
-- OpenRouteService API key for routing features
+- Elementor (Free or Pro)
+- OpenRouteService API Key (optional)
 
-## Current Version
+---
 
-1.0.0
+## Current Stable Version
 
-## Status
+**1.0.0**
 
-Private development repository.
+---
+
+## Roadmap
+
+See **ROADMAP.md**
+
+---
+
+## Changelog
+
+See **CHANGELOG.md**
+
+---
+
+## License
+
+Private project.
