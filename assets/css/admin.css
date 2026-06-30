@@ -1,0 +1,303 @@
+.swm-admin-page h1 span { font-size: 13px; padding: 3px 8px; border-radius: 999px; background: #111; color: #fff; vertical-align: middle; }
+.swm-admin-lead { max-width: 980px; font-size: 15px; }
+.swm-admin-layout { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 18px; align-items: start; margin-top: 16px; }
+.swm-admin-map-card, .swm-admin-form-card, .swm-admin-list-card { background: #fff; border: 1px solid #dcdcde; border-radius: 12px; box-shadow: 0 1px 2px rgba(0,0,0,.04); }
+.swm-admin-map-card { overflow: hidden; }
+#swm-admin-map { height: 620px; min-height: 420px; }
+.swm-admin-hint { padding: 10px 14px; font-size: 13px; color: #50575e; border-top: 1px solid #dcdcde; }
+.swm-admin-form-card { padding: 16px; }
+.swm-admin-form-card h2 { margin-top: 0; }
+.swm-admin-form-card label { display: block; margin-top: 12px; font-weight: 700; }
+.swm-admin-form-card input[type="text"], .swm-admin-form-card input[type="url"], .swm-admin-form-card input[type="number"], .swm-admin-form-card textarea, .swm-admin-form-card select { width: 100%; max-width: none; margin-top: 5px; }
+.swm-admin-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.swm-admin-grid-2 p { margin: 0; }
+.swm-admin-actions { display: flex; gap: 10px; align-items: center; margin-top: 16px; flex-wrap: wrap; }
+#swm-admin-message { margin-top: 12px; padding: 9px 11px; border-radius: 8px; display: none; }
+#swm-admin-message.is-success, #swm-admin-message.is-error, #swm-admin-message.is-info { display: block; }
+#swm-admin-message.is-success { background: #edfaef; color: #135e1f; }
+#swm-admin-message.is-error { background: #fcf0f1; color: #b32d2e; }
+#swm-admin-message.is-info { background: #eef6ff; color: #0a4b78; }
+.swm-admin-list-card { margin-top: 18px; padding: 16px; }
+.swm-admin-list-card h2 { margin-top: 0; }
+.swm-admin-list-card tr[data-id] { cursor: pointer; }
+.swm-admin-marker { width: 30px; height: 30px; border: 0; background: transparent; padding: 0; cursor: pointer; }
+.swm-admin-marker span { display: block; width: 22px; height: 22px; margin: 4px; border-radius: 50% 50% 50% 0; background: #e63b2e; border: 3px solid #fff; transform: rotate(-45deg); box-shadow: 0 5px 16px rgba(0,0,0,.28); }
+@media (max-width: 1100px) { .swm-admin-layout { grid-template-columns: 1fr; } #swm-admin-map { height: 520px; } }
+
+.swm-admin-map-error { padding: 28px; font-size: 15px; color: #b32d2e; background: #fcf0f1; border: 1px solid #e0aeb1; margin: 18px; border-radius: 10px; }
+
+.swm-admin-project-card{background:#fff;border:1px solid #dcdcde;border-radius:10px;padding:16px;margin:16px 0 20px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.swm-admin-project-card select{min-width:260px;margin:0 8px}
+
+.swm-admin-route-card{background:#fff;border:1px solid #dcdcde;border-radius:8px;padding:16px;margin:16px 0;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.swm-admin-route-card h2{margin-top:0}.swm-admin-route-controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:12px 0}.swm-admin-route-controls select{min-width:160px}#swm-route-status{margin-top:8px;font-weight:600}#swm-route-status.is-success{color:#008a20}#swm-route-status.is-error{color:#b32d2e}#swm-route-status.is-info{color:#2271b1}.swm-admin-route-marker{width:28px;height:28px;border-radius:50%;border:2px solid #fff;background:#e63b2e;color:#fff;font-weight:700;box-shadow:0 2px 8px rgba(0,0,0,.3);cursor:grab}.swm-admin-route-marker:active{cursor:grabbing}
+
+.swm-admin-search-card {
+	background: #fff;
+	border: 1px solid #dcdcde;
+	border-radius: 10px;
+	padding: 16px;
+	margin: 16px 0;
+}
+.swm-admin-search-card h2 { margin-top: 0; }
+.swm-admin-search-row {
+	display: flex;
+	gap: 8px;
+	align-items: center;
+	flex-wrap: wrap;
+}
+.swm-admin-search-row input[type="search"] {
+	min-width: min(520px, 100%);
+	max-width: 100%;
+}
+.swm-place-results {
+	margin-top: 10px;
+	display: grid;
+	gap: 8px;
+}
+.swm-place-result {
+	border: 1px solid #dcdcde;
+	border-radius: 8px;
+	padding: 10px;
+	background: #f6f7f7;
+}
+.swm-place-title {
+	border: 0;
+	padding: 0;
+	background: transparent;
+	font-weight: 700;
+	cursor: pointer;
+	text-align: left;
+	color: #1d2327;
+}
+.swm-place-title:hover { color: #2271b1; }
+.swm-place-actions {
+	margin-top: 8px;
+	display: flex;
+	gap: 8px;
+	flex-wrap: wrap;
+}
+.swm-place-results .is-error { color: #b32d2e; }
+
+.swm-admin-route-list {
+	margin-top: 14px;
+	padding: 14px;
+	border: 1px solid #dcdcde;
+	background: #fff;
+	border-radius: 8px;
+}
+.swm-admin-route-list h3 {
+	margin: 0 0 10px;
+}
+#swm-route-waypoints-list {
+	margin: 0 0 12px 22px;
+	max-height: 240px;
+	overflow: auto;
+}
+#swm-route-waypoints-list li {
+	padding: 8px 0;
+	border-bottom: 1px solid #f0f0f1;
+}
+#swm-route-waypoints-list code {
+	font-size: 12px;
+}
+#swm-route-waypoints-list .button-link,
+#swm-route-waypoints-list .button-link-delete {
+	margin-left: 8px;
+}
+
+#swm-admin-map.is-delete-mode { cursor: not-allowed; }
+#swm-admin-map.is-delete-mode .swm-admin-marker,
+#swm-admin-map.is-delete-mode .swm-admin-route-marker { cursor: crosshair; outline: 2px solid #d63638; outline-offset: 3px; }
+
+/* v2.7.1 - Editor waypoint avanzato */
+#swm-route-waypoints-list {
+	margin-left: 0;
+	padding-left: 0;
+	list-style: none;
+	max-height: 340px;
+}
+#swm-route-waypoints-list .swm-route-empty {
+	padding: 10px 0;
+	color: #646970;
+}
+.swm-route-waypoint-row {
+	display: grid;
+	grid-template-columns: 24px 32px minmax(0, 1fr);
+	gap: 8px;
+	align-items: start;
+	padding: 10px;
+	border: 1px solid #e5e5e5;
+	border-radius: 8px;
+	background: #fff;
+	margin-bottom: 8px;
+}
+.swm-route-waypoint-row.is-dragging { opacity: .55; }
+.swm-route-waypoint-row.is-drag-over { border-color: #2271b1; background: #f0f6fc; }
+.swm-route-drag {
+	cursor: grab;
+	color: #646970;
+	font-size: 17px;
+	line-height: 30px;
+	user-select: none;
+}
+.swm-route-number {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 26px;
+	height: 26px;
+	border-radius: 999px;
+	background: #1d2327;
+	color: #fff;
+	font-weight: 700;
+	font-size: 12px;
+}
+.swm-route-waypoint-main input.swm-route-name {
+	width: 100%;
+	max-width: none;
+	margin: 0 0 5px;
+}
+.swm-route-waypoint-main code {
+	display: inline-block;
+	margin-bottom: 4px;
+	color: #646970;
+}
+.swm-route-waypoint-actions {
+	display: flex;
+	gap: 10px;
+	flex-wrap: wrap;
+}
+.swm-route-waypoint-actions .button-link,
+.swm-route-waypoint-actions .button-link-delete {
+	margin-left: 0 !important;
+}
+
+.swm-media-field{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.swm-media-field input[type=url]{flex:1 1 320px;max-width:100%}
+
+/* v1.0.0 - Wild Maps UX refactor */
+.swm-hero,
+.swm-studio-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: flex-start;
+	gap: 18px;
+	margin: 18px 0;
+}
+.swm-hero h1,
+.swm-studio-header h1 { margin: 0 0 4px; font-size: 34px; line-height: 1.1; }
+.swm-hero h1 span,
+.swm-studio-header h1 span { font-size: 13px; padding: 3px 8px; border-radius: 999px; background: #111; color: #fff; vertical-align: middle; }
+.button-hero { min-height: 40px; display: inline-flex !important; align-items: center; }
+.swm-dashboard-grid {
+	display: grid;
+	grid-template-columns: repeat(4, minmax(0, 1fr));
+	gap: 14px;
+	margin: 18px 0;
+}
+.swm-stat,
+.swm-action-card,
+.swm-placeholder {
+	background: #fff;
+	border: 1px solid #dcdcde;
+	border-radius: 16px;
+	box-shadow: 0 1px 2px rgba(0,0,0,.04);
+}
+.swm-stat { padding: 22px; }
+.swm-stat strong { display: block; font-size: 36px; line-height: 1; margin-bottom: 7px; }
+.swm-stat span { color: #646970; text-transform: uppercase; letter-spacing: .08em; font-size: 12px; font-weight: 700; }
+.swm-dashboard-actions { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-top: 16px; }
+.swm-action-card { display: block; padding: 18px; text-decoration: none; color: #1d2327; }
+.swm-action-card:hover { border-color: #2271b1; color: #0a4b78; }
+.swm-action-card strong { display: block; font-size: 15px; margin-bottom: 6px; }
+.swm-action-card span { color: #646970; }
+.swm-last-project { margin-top: 18px; }
+.swm-placeholder { padding: 24px; max-width: 760px; }
+
+.swm-studio-page .swm-admin-lead { margin: 0; }
+.swm-studio-topbar { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.swm-project-switcher { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.swm-project-switcher p { flex-basis: 100%; margin: 5px 0 0; }
+.swm-studio-tabs {
+	display: flex;
+	gap: 6px;
+	margin: 18px 0 0;
+	border-bottom: 1px solid #dcdcde;
+}
+.swm-studio-tabs button {
+	border: 1px solid transparent;
+	border-bottom: none;
+	background: transparent;
+	padding: 11px 16px;
+	font-weight: 700;
+	cursor: pointer;
+	border-radius: 10px 10px 0 0;
+}
+.swm-studio-tabs button.is-active {
+	background: #fff;
+	border-color: #dcdcde;
+	color: #1d2327;
+	margin-bottom: -1px;
+}
+.swm-studio-shell {
+	display: grid;
+	grid-template-columns: 78px minmax(0, 1fr);
+	gap: 16px;
+	align-items: start;
+	margin-top: 16px;
+}
+.swm-studio-toolbar {
+	position: sticky;
+	top: 44px;
+	background: #fff;
+	border: 1px solid #dcdcde;
+	border-radius: 18px;
+	padding: 8px;
+	box-shadow: 0 2px 12px rgba(0,0,0,.05);
+	display: grid;
+	gap: 8px;
+}
+.swm-studio-toolbar button {
+	width: 60px;
+	min-height: 58px;
+	border: 1px solid transparent;
+	background: #f6f7f7;
+	border-radius: 14px;
+	cursor: pointer;
+	font-size: 22px;
+	line-height: 1;
+}
+.swm-studio-toolbar button span { display: block; font-size: 10px; margin-top: 5px; color: #50575e; font-weight: 700; }
+.swm-studio-toolbar button.is-active { border-color: #111; background: #111; color: #fff; }
+.swm-studio-toolbar button.is-active span { color: #fff; }
+.swm-studio-toolbar button:disabled { opacity: .45; cursor: not-allowed; }
+.swm-tab-panel { display: none; }
+.swm-tab-panel.is-active { display: block; }
+.swm-map-and-inspector { margin-top: 16px; }
+.swm-inspector { position: sticky; top: 44px; }
+.swm-studio-status {
+	display: flex;
+	gap: 18px;
+	flex-wrap: wrap;
+	margin: 14px 0 0;
+	padding: 10px 14px;
+	background: #fff;
+	border: 1px solid #dcdcde;
+	border-radius: 12px;
+	color: #50575e;
+}
+.swm-studio-status span { font-size: 12px; }
+@media (max-width: 1100px) {
+	.swm-dashboard-grid,
+	.swm-dashboard-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+	.swm-studio-shell { grid-template-columns: 1fr; }
+	.swm-studio-toolbar { position: static; display: flex; overflow-x: auto; }
+}
+@media (max-width: 680px) {
+	.swm-hero,
+	.swm-studio-header { display: block; }
+	.swm-dashboard-grid,
+	.swm-dashboard-actions { grid-template-columns: 1fr; }
+	.swm-studio-topbar { justify-content: flex-start; margin-top: 12px; }
+}
