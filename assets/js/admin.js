@@ -62,6 +62,36 @@
 	var currentProjectEl = $('swm-current-project');
 	function currentProjectId() { return currentProjectEl ? currentProjectEl.value : ''; }
 
+	mapEl.style.visibility = 'hidden';
+	var mapRevealed = false;
+	var ipCacheKey = 'wild_maps_admin_ip_center_v1';
+	function revealAdminMap() {
+		if (mapRevealed) return;
+		mapRevealed = true;
+		mapEl.style.visibility = 'visible';
+		setTimeout(function () { try { map.resize(); } catch (e) {} }, 0);
+	}
+	function getCachedIpCenter() {
+		try {
+			if (!window.localStorage) return null;
+			var cached = localStorage.getItem(ipCacheKey);
+			if (!cached) return null;
+			var data = JSON.parse(cached);
+			if (data && isFinite(Number(data.lat)) && isFinite(Number(data.lng)) && data.expires && Date.now() < data.expires) {
+				return { lat: Number(data.lat), lng: Number(data.lng) };
+			}
+		} catch (e) {}
+		return null;
+	}
+	function saveCachedIpCenter(center) {
+		try {
+			if (window.localStorage) localStorage.setItem(ipCacheKey, JSON.stringify({ lat: Number(center.lat), lng: Number(center.lng), expires: Date.now() + 86400000 }));
+		} catch (e) {}
+	}
+	var cachedIpCenter = getCachedIpCenter();
+	var initialCenter = cachedIpCenter ? [cachedIpCenter.lng, cachedIpCenter.lat] : (SWM_ADMIN.center || [42.72, 43.04]);
+	var initialZoom = cachedIpCenter ? (SWM_ADMIN.ipZoom || 8) : (SWM_ADMIN.zoom || 7);
+
 	var adminStyle = SWM_ADMIN.mapStyleUrl || {
 		version: 8,
 		glyphs: 'https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf',
@@ -88,6 +118,43 @@
 		preserveDrawingBuffer: true
 	});
 	map.addControl(new maplibregl.NavigationControl(), 'top-right');
+
+	var hasLoadedProjectBounds = false;
+	function markMapContentFitted() { hasLoadedProjectBounds = true; }
+	function hasProjectMapContent() {
+		return hasLoadedProjectBounds || points.length > 0 || routeWaypoints.length > 0 || !!routeGeojson;
+	}
+	function centerAdminMapFromIpIfEmpty() {
+		if (!SWM_ADMIN.ipCenterEnabled) return Promise.resolve(false);
+		if (hasProjectMapContent()) return Promise.resolve(false);
+		function applyCenter(center, source) {
+			if (!center || !isFinite(Number(center.lng)) || !isFinite(Number(center.lat))) return false;
+			if (hasProjectMapContent()) return false;
+			map.jumpTo({ center: [Number(center.lng), Number(center.lat)], zoom: SWM_ADMIN.ipZoom || 8 });
+			if (source) routeMsg('Mappa centrata in base alla posizione stimata da IP.', 'info');
+			return true;
+		}
+		var cached = getCachedIpCenter();
+		if (cached) return Promise.resolve(applyCenter(cached, false));
+		var services = [
+			{ url: 'https://ipapi.co/json/', parse: function (d) { return { lat: d.latitude, lng: d.longitude }; } },
+			{ url: 'https://ipwho.is/', parse: function (d) { return { lat: d.latitude, lng: d.longitude }; } }
+		];
+		function tryService(index) {
+			if (index >= services.length) return Promise.resolve(false);
+			return fetch(services[index].url, { credentials: 'omit', cache: 'force-cache' })
+				.then(function (r) { return r.ok ? r.json() : Promise.reject(new Error('ip_failed')); })
+				.then(function (json) {
+					var center = services[index].parse(json || {});
+					if (!center || !isFinite(Number(center.lat)) || !isFinite(Number(center.lng))) throw new Error('ip_invalid');
+					center = { lat: Number(center.lat), lng: Number(center.lng) };
+					saveCachedIpCenter(center);
+					return applyCenter(center, true);
+				})
+				.catch(function () { return tryService(index + 1); });
+		}
+		return tryService(0);
+	}
 
 	function post(action, data) {
 		var body = new URLSearchParams(Object.assign({ action: action, nonce: SWM_ADMIN.nonce }, data || {}));
@@ -291,7 +358,7 @@
 			if (points.length) {
 				var bounds = new maplibregl.LngLatBounds();
 				points.forEach(function (p) { if (p.lat && p.lng) bounds.extend([Number(p.lng), Number(p.lat)]); });
-				if (!bounds.isEmpty()) map.fitBounds(bounds, { padding: 80, maxZoom: 10, duration: 0 });
+				if (!bounds.isEmpty()) { map.fitBounds(bounds, { padding: 80, maxZoom: 10, duration: 0 }); markMapContentFitted(); }
 			}
 		}).catch(function (e) { msg(e.message, 'error'); });
 	}
@@ -555,7 +622,7 @@
 				if (coords.length) {
 					var b = new maplibregl.LngLatBounds(coords[0], coords[0]);
 					coords.forEach(function(c){ b.extend(c); });
-					map.fitBounds(b, { padding:80, maxZoom:10, duration:0 });
+					map.fitBounds(b, { padding:80, maxZoom:10, duration:0 }); markMapContentFitted();
 				}
 				routeMsg('Percorso progetto caricato.', 'success');
 			} else {
@@ -681,9 +748,19 @@
 		captureRouteSnapshot(function(){ window.open(url, '_blank'); routeMsg('Roadbook aperto. Usa Stampa / Salva PDF.', 'success'); });
 	});
 
-	if (currentProjectEl) { currentProjectEl.addEventListener('change', function () { resetForm(); loadPoints(); loadRoute(); }); }
+	function loadCurrentProject() {
+		hasLoadedProjectBounds = false;
+		return Promise.all([loadPoints(), loadRoute()]).then(function () {
+			return centerAdminMapFromIpIfEmpty();
+		}).then(function () {
+			revealAdminMap();
+		}).catch(function () {
+			revealAdminMap();
+		});
+	}
+	if (currentProjectEl) { currentProjectEl.addEventListener('change', function () { resetForm(); loadCurrentProject(); }); }
 	initPlaceSearch();
-	map.on('load', function(){ loadPoints(); loadRoute(); });
+	map.on('load', function(){ loadCurrentProject(); });
 })();
 
 // v1.0.0 - Wild Maps Studio UX helpers
