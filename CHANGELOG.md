@@ -12,6 +12,9 @@ The format is inspired by **Keep a Changelog** and follows Semantic Versioning.
 
 - Native `.wmap` project format (in development).
 - Project Import / Export manager (in development).
+- Native `.wmap` project format.
+- Project import (.wmap).
+- Project export (.wmap).
 
 ### Improved
 
