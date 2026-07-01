@@ -17,9 +17,12 @@ define( 'SWM_WMAP_FORMAT_VERSION', '1.3' );
 require_once SWM_PATH . 'includes/class-swm-loader.php';
 
 \WildMaps\Loader::require_files( [
+	'includes/Core/class-swm-route-collection.php',
 	'includes/class-swm-plugin.php',
 	'includes/class-swm-wmap-compat.php',
 ] );
+
+\WildMaps\Core\Route_Collection::init();
 
 add_action( 'admin_enqueue_scripts', function( $hook ) {
 	$screen = function_exists( 'get_current_screen' ) ? get_current_screen() : null;
