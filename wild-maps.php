@@ -22,6 +22,8 @@ require_once SWM_PATH . 'includes/class-swm-loader.php';
 	'includes/class-swm-wmap-compat.php',
 ] );
 
+\WildMaps\Core\Route_Collection::init();
+
 add_action( 'admin_enqueue_scripts', function( $hook ) {
 	$screen = function_exists( 'get_current_screen' ) ? get_current_screen() : null;
 	$is_swm_screen = false !== strpos( (string) $hook, 'wild-maps' ) || ( $screen && in_array( $screen->post_type, [ 'swm_map_point', 'swm_map_project' ], true ) );
