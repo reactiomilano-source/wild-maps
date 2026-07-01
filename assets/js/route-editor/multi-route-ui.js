@@ -160,14 +160,13 @@
 		var name = route && route.name ? route.name : 'Wild Maps route';
 		var coords = routeCoordinates(route);
 		if (!coords.length && Array.isArray(route.waypoints)) coords = route.waypoints.map(function (wp) { return [wp[0], wp[1]]; });
-		if (!coords.length) throw new Error('La route attiva non contiene coordinate esportabili.');
+		if (!coords.length) throw new Error('La route non contiene coordinate esportabili.');
 		var now = new Date().toISOString();
 		var wpts = Array.isArray(route.waypoints) ? route.waypoints.map(function (wp) { return '<wpt lat="' + wp[1] + '" lon="' + wp[0] + '"><name>' + xml(wp[2] || 'Waypoint') + '</name></wpt>'; }).join('\n') : '';
 		var trkpts = coords.map(function (c) { return '<trkpt lat="' + c[1] + '" lon="' + c[0] + '"></trkpt>'; }).join('\n');
 		return '<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="Wild Maps" xmlns="http://www.topografix.com/GPX/1/1">\n<metadata><name>' + xml(name) + '</name><time>' + now + '</time></metadata>\n' + wpts + '\n<trk><name>' + xml(name) + '</name><trkseg>\n' + trkpts + '\n</trkseg></trk>\n</gpx>\n';
 	}
-	function downloadText(filename, content) {
-		var blob = new Blob([content], { type: 'application/gpx+xml;charset=utf-8' });
+	function downloadBlob(filename, blob) {
 		var url = URL.createObjectURL(blob);
 		var a = document.createElement('a');
 		a.href = url;
@@ -177,12 +176,55 @@
 		a.remove();
 		window.setTimeout(function () { URL.revokeObjectURL(url); }, 500);
 	}
+	function downloadText(filename, content) {
+		downloadBlob(filename, new Blob([content], { type: 'application/gpx+xml;charset=utf-8' }));
+	}
 	function exportActiveGpx() {
 		try {
 			var route = activeRoute();
 			if (!route) throw new Error('Nessuna route attiva da esportare.');
 			downloadText(slug(route.name || route.id) + '.gpx', routeToGpx(route));
 			status('GPX esportato: ' + (route.name || route.id) + '.', 'success');
+		} catch (e) { status(e.message, 'error'); }
+	}
+	function crc32(text) {
+		var table = crc32.table || (crc32.table = (function () {
+			var c, table = [];
+			for (var n = 0; n < 256; n++) { c = n; for (var k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; table[n] = c >>> 0; }
+			return table;
+		})());
+		var crc = -1;
+		for (var i = 0; i < text.length; i++) crc = (crc >>> 8) ^ table[(crc ^ text.charCodeAt(i)) & 0xff];
+		return (crc ^ -1) >>> 0;
+	}
+	function u16(n) { return String.fromCharCode(n & 255, (n >>> 8) & 255); }
+	function u32(n) { return String.fromCharCode(n & 255, (n >>> 8) & 255, (n >>> 16) & 255, (n >>> 24) & 255); }
+	function makeZip(files) {
+		var local = '', central = '', offset = 0;
+		files.forEach(function (file) {
+			var name = file.name;
+			var data = file.content;
+			var crc = crc32(data);
+			var localHeader = 'PK\x03\x04' + u16(20) + u16(0) + u16(0) + u16(0) + u16(0) + u32(crc) + u32(data.length) + u32(data.length) + u16(name.length) + u16(0) + name;
+			local += localHeader + data;
+			central += 'PK\x01\x02' + u16(20) + u16(20) + u16(0) + u16(0) + u16(0) + u16(0) + u32(crc) + u32(data.length) + u32(data.length) + u16(name.length) + u16(0) + u16(0) + u16(0) + u16(0) + u32(0) + u32(offset) + name;
+			offset += localHeader.length + data.length;
+		});
+		return local + central + 'PK\x05\x06' + u16(0) + u16(0) + u16(files.length) + u16(files.length) + u32(central.length) + u32(local.length) + u16(0);
+	}
+	function exportAllGpxZip() {
+		try {
+			var state = getState();
+			var files = [];
+			(state.routes || []).forEach(function (route, index) {
+				try {
+					var prefix = String(index + 1).padStart(2, '0');
+					files.push({ name: prefix + '-' + slug(route.name || route.id) + '.gpx', content: routeToGpx(route) });
+				} catch (e) {}
+			});
+			if (!files.length) throw new Error('Nessuna route esportabile nel progetto.');
+			downloadBlob('wild-maps-routes.zip', new Blob([makeZip(files)], { type: 'application/zip' }));
+			status('ZIP GPX esportato: ' + files.length + ' route.', 'success');
 		} catch (e) { status(e.message, 'error'); }
 	}
 	function mountGpxImport(panel) {
@@ -200,13 +242,14 @@
 		var panel = document.createElement('div');
 		panel.id = 'swm-multi-route-panel';
 		panel.className = 'swm-admin-route-card swm-multi-route-panel';
-		panel.innerHTML = '<h2>Routes</h2><p class="description">Active route: <strong class="swm-multi-route-active">Main route</strong></p><div class="swm-multi-route-list"></div><p><button type="button" class="button button-primary" id="swm-route-create">+ New route</button> <button type="button" class="button" id="swm-route-rename">Rename active</button> <button type="button" class="button" id="swm-route-export-gpx">Export active GPX</button></p><p class="description">Route collection is saved in this project.</p>';
+		panel.innerHTML = '<h2>Routes</h2><p class="description">Active route: <strong class="swm-multi-route-active">Main route</strong></p><div class="swm-multi-route-list"></div><p><button type="button" class="button button-primary" id="swm-route-create">+ New route</button> <button type="button" class="button" id="swm-route-rename">Rename active</button> <button type="button" class="button" id="swm-route-export-gpx">Export active GPX</button> <button type="button" class="button" id="swm-route-export-all-gpx">Export all GPX ZIP</button></p><p class="description">Route collection is saved in this project.</p>';
 		routeCard.parentNode.insertBefore(panel, routeCard);
 		panel.addEventListener('click', function (event) {
 			var target = event.target;
 			if (target.id === 'swm-route-create') { event.preventDefault(); createRoute(); return; }
 			if (target.id === 'swm-route-rename') { event.preventDefault(); renameActiveRoute(); return; }
 			if (target.id === 'swm-route-export-gpx') { event.preventDefault(); exportActiveGpx(); return; }
+			if (target.id === 'swm-route-export-all-gpx') { event.preventDefault(); exportAllGpxZip(); return; }
 			if (target && target.getAttribute('data-route-id')) { event.preventDefault(); var s = ensureStore(); if (s && s.setActiveRoute) s.setActiveRoute(target.getAttribute('data-route-id')); render(); saveRoutes('Route attiva: ' + activeRouteName() + '.'); }
 		});
 		mountGpxImport(panel);
