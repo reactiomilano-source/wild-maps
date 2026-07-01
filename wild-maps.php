@@ -43,7 +43,8 @@ add_action( 'admin_enqueue_scripts', function( $hook ) {
 	wp_enqueue_script( 'swm-route-actions', SWM_URL . 'assets/js/route-editor/route-actions.js', [ 'swm-admin', 'swm-route-store', 'swm-route-store-bridge' ], SWM_VERSION, true );
 	wp_enqueue_script( 'swm-route-drag-store', SWM_URL . 'assets/js/route-editor/route-drag-store.js', [ 'swm-admin', 'swm-route-store', 'swm-route-store-bridge', 'swm-route-actions' ], SWM_VERSION, true );
 	wp_enqueue_script( 'swm-multi-route-ui', SWM_URL . 'assets/js/route-editor/multi-route-ui.js', [ 'swm-admin', 'swm-route-store', 'swm-route-store-bridge' ], SWM_VERSION, true );
-	wp_enqueue_script( 'swm-route-layer-renderer', SWM_URL . 'assets/js/route-editor/route-layer-renderer.js', [ 'swm-admin', 'swm-route-store', 'swm-multi-route-ui' ], SWM_VERSION, true );
+	wp_enqueue_script( 'swm-route-styling-ui', SWM_URL . 'assets/js/route-editor/route-styling-ui.js', [ 'swm-admin', 'swm-route-store', 'swm-multi-route-ui' ], SWM_VERSION, true );
+	wp_enqueue_script( 'swm-route-layer-renderer', SWM_URL . 'assets/js/route-editor/route-layer-renderer.js', [ 'swm-admin', 'swm-route-store', 'swm-multi-route-ui', 'swm-route-styling-ui' ], SWM_VERSION, true );
 }, 11 );
 
 add_action( 'plugins_loaded', function () {
