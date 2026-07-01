@@ -4,7 +4,7 @@
 	function byId(id) { return document.getElementById(id); }
 	function esc(text) { return String(text || '').replace(/[&<>"']/g, function (m) { return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]); }); }
 	function status(text, type) {
-		var el = byId('swm-route-status');
+		var el = byId('swm-route-status') || byId('swm-gpx-import-status');
 		if (!el) return;
 		el.textContent = text || '';
 		el.className = type ? 'is-' + type : '';
@@ -94,6 +94,63 @@
 		render();
 		saveRoutes('Route rinominata.');
 	}
+	function nodeText(node) { return node ? String(node.textContent || '').trim() : ''; }
+	function gpxPoint(node) {
+		var lat = Number(node.getAttribute('lat'));
+		var lon = Number(node.getAttribute('lon'));
+		if (!isFinite(lat) || !isFinite(lon)) return null;
+		return [Number(lon.toFixed(6)), Number(lat.toFixed(6))];
+	}
+	function parseGpx(xmlText, fileName) {
+		var doc = new DOMParser().parseFromString(xmlText, 'application/xml');
+		if (doc.querySelector('parsererror')) throw new Error(fileName + ': GPX non valido.');
+		var name = nodeText(doc.querySelector('gpx > name')) || fileName.replace(/\.gpx$/i, '') || 'Imported GPX';
+		var coords = [];
+		var trackName = nodeText(doc.querySelector('trk > name'));
+		if (trackName) name = trackName;
+		doc.querySelectorAll('trkpt').forEach(function (pt) { var p = gpxPoint(pt); if (p) coords.push(p); });
+		if (!coords.length) {
+			var routeName = nodeText(doc.querySelector('rte > name'));
+			if (routeName) name = routeName;
+			doc.querySelectorAll('rtept').forEach(function (pt) { var p = gpxPoint(pt); if (p) coords.push(p); });
+		}
+		if (!coords.length) throw new Error(fileName + ': nessuna traccia GPX trovata.');
+		var waypoints = [];
+		doc.querySelectorAll('wpt').forEach(function (wpt) { var p = gpxPoint(wpt); if (p) waypoints.push([p[0], p[1], nodeText(wpt.querySelector('name')) || 'Waypoint']); });
+		return { id: 'route-' + name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-' + Math.random().toString(16).slice(2, 8), name: name, visible: true, locked: false, style: { color: '#e63b2e', width: 4, opacity: 0.95 }, geojson: { type: 'FeatureCollection', features: [{ type: 'Feature', properties: { name: name, source: 'gpx', file: fileName }, geometry: { type: 'LineString', coordinates: coords } }] }, waypoints: waypoints };
+	}
+	function readGpxFile(file) {
+		return new Promise(function (resolve, reject) {
+			var reader = new FileReader();
+			reader.onload = function () { try { resolve(parseGpx(String(reader.result || ''), file.name)); } catch (e) { reject(e); } };
+			reader.onerror = function () { reject(new Error(file.name + ': lettura file non riuscita.')); };
+			reader.readAsText(file);
+		});
+	}
+	function importGpxFiles(files) {
+		if (!currentProjectId()) { status('Seleziona prima un progetto.', 'error'); return; }
+		if (!files || !files.length) { status('Seleziona uno o più file GPX.', 'error'); return; }
+		status('Import GPX in corso...', 'info');
+		Promise.all(Array.prototype.slice.call(files).map(readGpxFile)).then(function (newRoutes) {
+			return loadRoutes().then(function () {
+				var state = getState();
+				state.routes = (state.routes || []).concat(newRoutes);
+				var activeId = newRoutes[0] ? newRoutes[0].id : state.activeRouteId;
+				var s = ensureStore();
+				if (s && s.load) s.load({ routes: state.routes, activeRouteId: activeId });
+				return saveRoutes('Import completato: ' + newRoutes.length + ' route GPX aggiunte.');
+			});
+		}).catch(function (e) { status(e.message, 'error'); });
+	}
+	function mountGpxImport(panel) {
+		if (!panel || byId('swm-gpx-import-panel')) return;
+		var box = document.createElement('div');
+		box.id = 'swm-gpx-import-panel';
+		box.className = 'swm-admin-route-card swm-gpx-import-panel';
+		box.innerHTML = '<h2>Import GPX multi-route</h2><p class="description">Carica uno o più GPX: ogni file diventa una route separata nello stesso progetto.</p><p><input type="file" id="swm-gpx-files" accept=".gpx,application/gpx+xml" multiple></p><p><button type="button" class="button" id="swm-gpx-import-button">Import GPX routes</button></p><p id="swm-gpx-import-status" class="description"></p>';
+		panel.appendChild(box);
+		byId('swm-gpx-import-button').addEventListener('click', function () { importGpxFiles(byId('swm-gpx-files').files); });
+	}
 	function mount() {
 		var routeCard = document.querySelector('.swm-admin-route-card');
 		if (!routeCard || byId('swm-multi-route-panel')) return;
@@ -108,6 +165,7 @@
 			if (target.id === 'swm-route-rename') { event.preventDefault(); renameActiveRoute(); return; }
 			if (target && target.getAttribute('data-route-id')) { event.preventDefault(); var s = ensureStore(); if (s && s.setActiveRoute) s.setActiveRoute(target.getAttribute('data-route-id')); render(); saveRoutes('Route attiva: ' + activeRouteName() + '.'); }
 		});
+		mountGpxImport(panel);
 		render();
 	}
 	function init() {
