@@ -1,6 +1,6 @@
 Wild Maps 1.2.0
 
-Professional Mapping, Route Planning & Roadbook Platform for WordPress.
+Professional Mapping, Route Planning & Roadbook Platform for WordPress
 
 Build. Explore. Share.
 
