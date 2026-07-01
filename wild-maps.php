@@ -21,6 +21,13 @@ require_once SWM_PATH . 'includes/class-swm-loader.php';
 	'includes/class-swm-wmap-compat.php',
 ] );
 
+add_action( 'admin_enqueue_scripts', function( $hook ) {
+	$screen = function_exists( 'get_current_screen' ) ? get_current_screen() : null;
+	$is_swm_screen = false !== strpos( (string) $hook, 'wild-maps' ) || ( $screen && in_array( $screen->post_type, [ 'swm_map_point', 'swm_map_project' ], true ) );
+	if ( ! $is_swm_screen ) { return; }
+	wp_enqueue_script( 'swm-route-store', SWM_URL . 'assets/js/route-editor/route-store.js', [], SWM_VERSION, true );
+}, 9 );
+
 add_action( 'plugins_loaded', function () {
 	\WildMaps\Plugin::instance();
 } );
