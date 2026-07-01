@@ -1,17 +1,85 @@
-Wild Maps 1.0.0
+Wild Maps 1.2.0
 
-Professional Route & Roadbook Builder for WordPress.
+Professional Mapping, Route Planning & Roadbook Platform for WordPress.
 
-1.0.0 - UX Refactoring I
-- Rebrand from Wild Maps to Wild Maps in the public UI.
-- New Wild Maps Dashboard with project, route, POI and roadbook counters.
-- Cleaner WordPress menu: Dashboard, Projects, Roadbooks, Import / Export, Settings, Help.
-- Project Studio layout with Route, POI, Roadbook and Settings tabs.
-- Vertical map toolbar: Pan, Route, POI, Edit, Delete, Measure.
-- Top action bar: Save, Undo, Redo placeholder, Calculate, Roadbook, Preview.
-- UI terminology cleanup: Stops are route points; POI are independent map points.
-- Elementor panel labels reorganized for a cleaner commercial product UI.
+Build. Explore. Share.
 
-Compatibility
-- Elementor Free and Elementor Pro compatible.
-- Requires Elementor for the widget.
+=== What's New in 1.2.0 ===
+
+PRO POI Editor
+- Live POI preview.
+- Custom SVG icons.
+- Icon Scale (%).
+- Website / URL field.
+- Categories.
+- Backend marker preview.
+- Delete All POIs.
+- Undo.
+- Autosave.
+
+Import / Export
+- Universal GPX.
+- Google My Maps KML.
+- Garmin BaseCamp GPX.
+- QMapShack GPX.
+- CSV Import / Export.
+- Native .WMAP Import / Export.
+
+Maps
+- Unified backend/frontend marker renderer.
+- Improved Garmin compatibility.
+- Improved GPX compatibility.
+- Improved CSV compatibility.
+- Improved Google My Maps compatibility.
+- Improved Tracks4Africa GPX compatibility.
+- Wild Maps branding and version in map attribution.
+
+User Experience
+- Redesigned Import / Export interface.
+- Improved project workflow.
+- Improved POI editing workflow.
+- Improved marker management.
+- Backend preview improvements.
+- General stability improvements.
+
+=== Features ===
+
+- Interactive Route Editor
+- PRO POI Editor
+- GPX Import / Export
+- KML Import / Export
+- CSV Import / Export
+- Native .WMAP Projects
+- GeoJSON Support
+- Custom SVG Markers
+- Icon Scale
+- Marker Labels
+- Fullscreen Maps
+- Elementor Widget
+- Responsive Maps
+- Custom Map Attribution
+
+=== Compatibility ===
+
+- WordPress 6.x+
+- PHP 8.1+
+- Elementor Free
+- Elementor Pro
+
+=== Roadmap ===
+
+Upcoming release:
+
+Wild Maps 1.3 - Route Editor 2.0
+
+- Multi-route projects
+- Route Layers
+- Drag & Drop waypoints
+- Duplicate waypoint
+- Reverse route
+- Insert waypoint
+- Automatic waypoint renumbering
+
+=== License ===
+
+Private project.
