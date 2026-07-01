@@ -26,6 +26,8 @@ class Plugin {
 		add_action( 'wp_ajax_swm_admin_ors_route', [ $this, 'ajax_ors_route' ] );
 		add_action( 'wp_ajax_swm_admin_ors_geocode', [ $this, 'ajax_ors_geocode' ] );
 		add_action( 'wp_ajax_swm_admin_route_pdf', [ $this, 'admin_route_pdf' ] );
+		add_action( 'admin_post_wm_export_project', [ $this, 'admin_export_project' ] );
+		add_action( 'admin_post_wm_import_project', [ $this, 'admin_import_project' ] );
 		add_action( 'wp_enqueue_scripts', [ $this, 'register_assets' ] );
 		add_action( 'elementor/frontend/after_register_scripts', [ $this, 'register_assets' ] );
 		add_action( 'elementor/elements/categories_registered', [ $this, 'register_elementor_category' ] );
@@ -521,7 +523,7 @@ class Plugin {
 		<div class="wrap swm-admin-page swm-dashboard">
 			<div class="swm-hero">
 				<div>
-					<h1>Wild Maps <span>1.0.0</span></h1>
+					<h1>Wild Maps <span>1.1.0-dev</span></h1>
 					<p class="swm-admin-lead">Professional Route & Roadbook Builder for WordPress.</p>
 				</div>
 				<a class="button button-primary button-hero" href="<?php echo esc_url( admin_url( 'post-new.php?post_type=swm_map_project' ) ); ?>">+ New Project</a>
@@ -546,8 +548,205 @@ class Plugin {
 	}
 
 	public function roadbooks_page() { $this->placeholder_page( 'Roadbooks', 'Open a project in Project Studio and use the Roadbook tab to generate or print the roadbook.' ); }
-	public function import_export_page() { $this->placeholder_page( 'Import / Export', 'This section is prepared for .wmap, GPX, KML and CSV workflows in the next sprint.' ); }
+	public function import_export_page() {
+		if ( ! current_user_can( 'edit_posts' ) ) { return; }
+		$projects = get_posts( [
+			'post_type'      => 'swm_map_project',
+			'post_status'    => 'publish',
+			'posts_per_page' => -1,
+			'orderby'        => 'title',
+			'order'          => 'ASC',
+		] );
+		$message = isset( $_GET['wm_message'] ) ? sanitize_text_field( wp_unslash( $_GET['wm_message'] ) ) : '';
+		$error   = isset( $_GET['wm_error'] ) ? sanitize_text_field( wp_unslash( $_GET['wm_error'] ) ) : '';
+		?>
+		<div class="wrap swm-admin-page">
+			<h1>Import / Export</h1>
+			<p class="swm-admin-lead">Use the native <strong>.wmap</strong> format to backup, duplicate or transfer a complete Wild Maps project.</p>
+			<?php if ( $message ) : ?><div class="notice notice-success is-dismissible"><p><?php echo esc_html( $message ); ?></p></div><?php endif; ?>
+			<?php if ( $error ) : ?><div class="notice notice-error is-dismissible"><p><?php echo esc_html( $error ); ?></p></div><?php endif; ?>
+
+			<div class="swm-dashboard-grid swm-import-export-grid">
+				<div class="swm-admin-route-card">
+					<h2>Export .wmap</h2>
+					<p class="description">Exports project title, route, route stops, POI, categories, icons and roadbook-ready data.</p>
+					<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+						<input type="hidden" name="action" value="wm_export_project" />
+						<?php wp_nonce_field( 'wm_export_project', 'wm_export_nonce' ); ?>
+						<p>
+							<label for="wm_export_project_id"><strong>Project</strong></label><br>
+							<select id="wm_export_project_id" name="project_id" required>
+								<option value="">Select project...</option>
+								<?php foreach ( $projects as $project ) : ?>
+									<option value="<?php echo esc_attr( $project->ID ); ?>"><?php echo esc_html( get_the_title( $project ) ); ?></option>
+								<?php endforeach; ?>
+							</select>
+						</p>
+						<?php submit_button( 'Export .wmap', 'primary', 'submit', false ); ?>
+					</form>
+				</div>
+
+				<div class="swm-admin-route-card">
+					<h2>Import .wmap</h2>
+					<p class="description">Creates a new project from a Wild Maps project file. Existing projects are not overwritten.</p>
+					<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" enctype="multipart/form-data">
+						<input type="hidden" name="action" value="wm_import_project" />
+						<?php wp_nonce_field( 'wm_import_project', 'wm_import_nonce' ); ?>
+						<p>
+							<label for="wm_import_file"><strong>.wmap file</strong></label><br>
+							<input type="file" id="wm_import_file" name="wmap_file" accept=".wmap,application/json" required />
+						</p>
+						<p>
+							<label for="wm_import_title"><strong>Optional new project title</strong></label><br>
+							<input type="text" id="wm_import_title" name="project_title" class="regular-text" placeholder="Leave empty to use file title" />
+						</p>
+						<?php submit_button( 'Import .wmap', 'primary', 'submit', false ); ?>
+					</form>
+				</div>
+			</div>
+
+			<div class="swm-placeholder" style="margin-top:18px;">
+				<p><strong>Coming next:</strong> GPX, KML and CSV import/export will use this same Import / Export section.</p>
+			</div>
+		</div>
+		<?php
+	}
 	public function help_page() { $this->placeholder_page( 'Help', 'Quick help, tooltips and documentation links will live here. For now, use Project Studio: Route = routing stops, POI = map points.' ); }
+
+	private function wmap_project_payload( $project_id ) {
+		$project = get_post( $project_id );
+		if ( ! $project || 'swm_map_project' !== $project->post_type ) { return null; }
+
+		$route_raw     = get_post_meta( $project_id, '_swm_route_geojson', true );
+		$waypoints_raw = get_post_meta( $project_id, '_swm_route_waypoints', true );
+		$route         = $route_raw ? json_decode( $route_raw, true ) : null;
+		$waypoints     = $waypoints_raw ? json_decode( $waypoints_raw, true ) : [];
+		if ( ! is_array( $waypoints ) ) { $waypoints = []; }
+
+		$points = [];
+		foreach ( $this->get_all_map_points( $project_id ) as $point ) {
+			$points[] = [
+				'name'        => $point['name'],
+				'lat'         => (float) $point['lat'],
+				'lng'         => (float) $point['lng'],
+				'category'    => $point['category'],
+				'icon_url'    => $point['icon_url'],
+				'label'       => $point['label'],
+				'description' => $point['description'],
+				'order'       => (int) $point['order'],
+			];
+		}
+
+		return [
+			'wmap'        => 'wild-maps-project',
+			'format'      => 'wmap',
+			'format_version' => '1.0',
+			'plugin'      => [
+				'name'    => 'Wild Maps',
+				'version' => SWM_VERSION,
+			],
+			'exported_at' => gmdate( 'c' ),
+			'site'        => [
+				'name' => get_bloginfo( 'name' ),
+				'url'  => home_url( '/' ),
+			],
+			'project'     => [
+				'title'       => get_the_title( $project ),
+				'slug'        => $project->post_name,
+				'description' => $project->post_excerpt,
+			],
+			'route'       => $route,
+			'stops'       => $waypoints,
+			'poi'         => $points,
+			'settings'    => [
+				'roadbook_name_mode' => get_option( 'swm_roadbook_name_mode', 'latin' ),
+			],
+		];
+	}
+
+	public function admin_export_project() {
+		if ( ! current_user_can( 'edit_posts' ) ) { wp_die( 'Permessi insufficienti.' ); }
+		if ( ! isset( $_POST['wm_export_nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['wm_export_nonce'] ) ), 'wm_export_project' ) ) { wp_die( 'Nonce non valido.' ); }
+		$project_id = isset( $_POST['project_id'] ) ? absint( $_POST['project_id'] ) : 0;
+		$payload = $this->wmap_project_payload( $project_id );
+		if ( ! $payload ) { wp_die( 'Progetto non valido.' ); }
+		$filename = sanitize_file_name( ( $payload['project']['title'] ?: 'wild-maps-project' ) . '.wmap' );
+		nocache_headers();
+		header( 'Content-Type: application/json; charset=utf-8' );
+		header( 'Content-Disposition: attachment; filename="' . $filename . '"' );
+		header( 'X-Content-Type-Options: nosniff' );
+		echo wp_json_encode( $payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+		exit;
+	}
+
+	private function redirect_import_export( $args = [] ) {
+		$url = add_query_arg( $args, admin_url( 'admin.php?page=wild-maps-import-export' ) );
+		wp_safe_redirect( $url );
+		exit;
+	}
+
+	public function admin_import_project() {
+		if ( ! current_user_can( 'edit_posts' ) ) { wp_die( 'Permessi insufficienti.' ); }
+		if ( ! isset( $_POST['wm_import_nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['wm_import_nonce'] ) ), 'wm_import_project' ) ) { wp_die( 'Nonce non valido.' ); }
+		if ( empty( $_FILES['wmap_file']['tmp_name'] ) || ! is_uploaded_file( $_FILES['wmap_file']['tmp_name'] ) ) {
+			$this->redirect_import_export( [ 'wm_error' => rawurlencode( 'Seleziona un file .wmap valido.' ) ] );
+		}
+
+		$raw = file_get_contents( $_FILES['wmap_file']['tmp_name'] ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+		$data = json_decode( $raw, true );
+		if ( ! is_array( $data ) || ( $data['wmap'] ?? '' ) !== 'wild-maps-project' ) {
+			$this->redirect_import_export( [ 'wm_error' => rawurlencode( 'Il file non sembra un progetto Wild Maps valido.' ) ] );
+		}
+
+		$project_data = isset( $data['project'] ) && is_array( $data['project'] ) ? $data['project'] : [];
+		$title = isset( $_POST['project_title'] ) && '' !== trim( (string) $_POST['project_title'] )
+			? sanitize_text_field( wp_unslash( $_POST['project_title'] ) )
+			: sanitize_text_field( $project_data['title'] ?? 'Imported Wild Maps Project' );
+		if ( '' === $title ) { $title = 'Imported Wild Maps Project'; }
+
+		$project_id = wp_insert_post( [
+			'post_type'    => 'swm_map_project',
+			'post_status'  => 'publish',
+			'post_title'   => $title,
+			'post_excerpt' => sanitize_textarea_field( $project_data['description'] ?? '' ),
+		], true );
+		if ( is_wp_error( $project_id ) ) {
+			$this->redirect_import_export( [ 'wm_error' => rawurlencode( $project_id->get_error_message() ) ] );
+		}
+
+		if ( isset( $data['route'] ) && is_array( $data['route'] ) ) {
+			update_post_meta( $project_id, '_swm_route_geojson', wp_slash( wp_json_encode( $data['route'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ) ) );
+		}
+		$stops = isset( $data['stops'] ) && is_array( $data['stops'] ) ? $data['stops'] : [];
+		update_post_meta( $project_id, '_swm_route_waypoints', wp_slash( wp_json_encode( $stops, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ) ) );
+
+		$created_points = 0;
+		$poi = isset( $data['poi'] ) && is_array( $data['poi'] ) ? $data['poi'] : [];
+		foreach ( $poi as $point ) {
+			if ( ! is_array( $point ) ) { continue; }
+			$name = sanitize_text_field( $point['name'] ?? '' );
+			$lat  = isset( $point['lat'] ) ? (float) $point['lat'] : null;
+			$lng  = isset( $point['lng'] ) ? (float) $point['lng'] : null;
+			if ( '' === $name || null === $lat || null === $lng ) { continue; }
+			$point_id = wp_insert_post( [
+				'post_type'   => 'swm_map_point',
+				'post_status' => 'publish',
+				'post_title'  => $name,
+			], true );
+			if ( is_wp_error( $point_id ) ) { continue; }
+			update_post_meta( $point_id, '_swm_project_id', (int) $project_id );
+			update_post_meta( $point_id, '_swm_lat', (string) $lat );
+			update_post_meta( $point_id, '_swm_lng', (string) $lng );
+			update_post_meta( $point_id, '_swm_category', sanitize_text_field( $point['category'] ?? '' ) );
+			update_post_meta( $point_id, '_swm_icon_url', esc_url_raw( $point['icon_url'] ?? '' ) );
+			update_post_meta( $point_id, '_swm_label', ( isset( $point['label'] ) && '0' === (string) $point['label'] ) ? '0' : '1' );
+			update_post_meta( $point_id, '_swm_description', sanitize_textarea_field( $point['description'] ?? '' ) );
+			update_post_meta( $point_id, '_swm_order', isset( $point['order'] ) ? intval( $point['order'] ) : 0 );
+			$created_points++;
+		}
+
+		$this->redirect_import_export( [ 'wm_message' => rawurlencode( 'Progetto importato: ' . $title . ' (' . $created_points . ' POI).' ) ] );
+	}
 
 	private function placeholder_page( $title, $message ) {
 		if ( ! current_user_can( 'edit_posts' ) ) { return; }
@@ -582,6 +781,8 @@ class Plugin {
 			'hasOrsKey' => (bool) self::openrouteservice_key(),
 			'mapTilerKey' => self::maptiler_key(),
 			'mapStyleUrl' => self::maptiler_key() ? add_query_arg( [ 'key' => self::maptiler_key(), 'language' => 'en' ], 'https://api.maptiler.com/maps/outdoor-v2/style.json' ) : '',
+			'ipCenterEnabled' => true,
+			'ipZoom' => 8,
 		] );
 	}
 
@@ -591,7 +792,7 @@ class Plugin {
 		<div class="wrap swm-admin-page swm-studio-page">
 			<div class="swm-studio-header">
 				<div>
-					<h1>Wild Maps Studio <span>1.0.0</span></h1>
+					<h1>Wild Maps Studio <span>1.1.0-dev</span></h1>
 					<p class="swm-admin-lead"><strong>Stops</strong> are used only to calculate the route. <strong>POI</strong> are independent points shown on the map and in the roadbook.</p>
 				</div>
 				<div class="swm-studio-topbar" aria-label="Project actions">
