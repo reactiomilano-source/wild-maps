@@ -27,6 +27,7 @@ add_action( 'admin_enqueue_scripts', function( $hook ) {
 	if ( ! $is_swm_screen ) { return; }
 	wp_enqueue_script( 'swm-route-store', SWM_URL . 'assets/js/route-editor/route-store.js', [], SWM_VERSION, true );
 	wp_enqueue_script( 'swm-route-store-bridge', SWM_URL . 'assets/js/route-editor/route-store-bridge.js', [ 'swm-route-store' ], SWM_VERSION, true );
+	wp_enqueue_script( 'swm-version-badge', SWM_URL . 'assets/js/admin-version-badge.js', [], SWM_VERSION, true );
 }, 9 );
 
 add_action( 'admin_enqueue_scripts', function( $hook ) {
