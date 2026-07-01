@@ -14,8 +14,12 @@ define( 'SWM_PATH', plugin_dir_path( __FILE__ ) );
 define( 'SWM_URL', plugin_dir_url( __FILE__ ) );
 define( 'SWM_WMAP_FORMAT_VERSION', '1.3' );
 
-require_once SWM_PATH . 'includes/class-swm-plugin.php';
-require_once SWM_PATH . 'includes/class-swm-wmap-compat.php';
+require_once SWM_PATH . 'includes/class-swm-loader.php';
+
+\WildMaps\Loader::require_files( [
+	'includes/class-swm-plugin.php',
+	'includes/class-swm-wmap-compat.php',
+] );
 
 add_action( 'plugins_loaded', function () {
 	\WildMaps\Plugin::instance();
