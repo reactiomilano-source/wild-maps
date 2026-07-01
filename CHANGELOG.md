@@ -2,75 +2,132 @@
 
 All notable changes to **Wild Maps** will be documented in this file.
 
-The format is inspired by **Keep a Changelog** and follows Semantic Versioning.
+The format is inspired by **Keep a Changelog** and follows **Semantic Versioning**.
 
 ---
 
 ## [Unreleased]
 
-### Added
+### Planned
 
-- Native `.wmap` project format (in development).
-- Project Import / Export manager (in development).
-- Native `.wmap` project format.
-- Project import (.wmap).
-- Project export (.wmap).
-
-### Improved
-
-- Backend map now initializes directly on the user's location when creating a new project.
-- Removed the initial map jump before geolocation is applied.
-- Improved backend map loading performance.
+- Route Editor 2.0
+- Multi-route projects
+- Route Layers
+- Drag & Drop waypoints
+- Duplicate waypoint
+- Reverse route
+- Insert waypoint between two stops
+- Automatic waypoint renumbering
+- Style Manager
+- Measure Tools
+- Custom Map Styles
 
 ---
 
-## [1.0.0] - 2026-06-30
+## [1.2.0] - 2026-07-01
 
-### Initial Release
+### Added
 
-First stable public release of **Wild Maps**.
+- PRO POI Editor.
+- Live POI preview.
+- Website / URL field.
+- Icon Scale (%) for custom SVG markers.
+- Undo.
+- Autosave.
+- Project Templates.
+- Delete All POIs.
+- Wild Maps branding and version in map attribution.
+- Backend marker preview.
 
-### Features
+### Import / Export
 
-- Interactive map widget for Elementor.
-- Backend project editor.
-- Route Builder.
-- POI (Points of Interest) management.
-- Manual waypoint creation.
-- GeoJSON route support.
-- OpenRouteService integration.
-- Automatic route calculation.
-- Printable Roadbook generation.
-- Roadbook PDF export.
-- Fullscreen map support.
-- Custom SVG marker support.
-- Marker categories.
-- Manual marker labels.
-- Project management.
-- Backend map editor.
-- Interactive route editing.
-- Route distance and estimated travel time.
-- Route stop list.
-- Responsive frontend map.
-- Elementor Free compatibility.
-- Elementor Pro compatibility.
+- Universal GPX.
+- Google My Maps KML.
+- Garmin BaseCamp GPX.
+- QMapShack GPX.
+- CSV Import / Export.
+- Native .WMAP Import / Export.
 
-### Improvements
+### Improved
 
-- Improved project workflow.
-- Improved Roadbook layout.
-- Improved route editing.
-- Improved backend usability.
-- Improved map rendering performance.
+- Completely redesigned Import / Export interface.
+- Unified backend/frontend POI rendering.
+- Garmin compatibility.
+- GPX compatibility.
+- CSV compatibility.
+- Project creation workflow.
+- POI editing workflow.
+- Marker management.
+- Backend preview.
 
 ### Fixed
 
-- Fixed marker alignment while zooming.
-- Fixed manual marker labels.
-- Fixed route deletion.
-- Fixed waypoint deletion.
-- Fixed Roadbook layout.
-- Fixed PDF generation.
-- Fixed OpenRouteService autocomplete.
-- Fixed backend map initialization.
-- Fixed frontend fullscreen behavior.
+- Garmin GPX export compatibility.
+- Garmin BaseCamp compatibility.
+- CSV import/export issues.
+- Backend marker rendering.
+- Frontend marker rendering.
+- Marker color synchronization.
+- SVG custom marker rendering.
+- Google My Maps compatibility.
+- Tracks4Africa GPX compatibility.
+- Various stability improvements.
+
+---
+
+## [1.1.0] - 2026-06-30
+
+### Added
+
+- Native .WMAP project format.
+- Project Import / Export manager.
+- GPX Import / Export.
+- KML Import / Export.
+- GeoJSON route support.
+- GeoJSON POI support.
+- Backend Project Manager.
+- Elementor widget.
+- Backend Route Editor.
+- Backend POI Editor.
+- Route styling.
+- Marker styling.
+- Label styling.
+- Popup styling.
+- Fullscreen control.
+- Custom map attribution.
+
+### Improved
+
+- Backend map initialization.
+- Backend map loading performance.
+- Project management workflow.
+- GeoJSON handling.
+- Google My Maps compatibility.
+- Backend editing experience.
+
+### Fixed
+
+- Route rendering improvements.
+- Marker rendering improvements.
+- GeoJSON parsing improvements.
+- Backend stability improvements.
+- Various UI fixes.
+
+---
+
+## [1.0.0] - 2026-06-01
+
+### Added
+
+- Initial release.
+- Interactive MapLibre maps.
+- GeoJSON route visualization.
+- GeoJSON point visualization.
+- Elementor integration.
+- Route rendering.
+- Marker rendering.
+- Automatic map fit.
+- Navigation controls.
+- Fullscreen support.
+- Basic popups.
+- MapTiler support.
