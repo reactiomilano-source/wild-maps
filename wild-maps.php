@@ -39,6 +39,7 @@ add_action( 'admin_enqueue_scripts', function( $hook ) {
 	if ( ! $is_swm_screen ) { return; }
 	wp_enqueue_script( 'swm-route-actions', SWM_URL . 'assets/js/route-editor/route-actions.js', [ 'swm-admin', 'swm-route-store', 'swm-route-store-bridge' ], SWM_VERSION, true );
 	wp_enqueue_script( 'swm-route-drag-store', SWM_URL . 'assets/js/route-editor/route-drag-store.js', [ 'swm-admin', 'swm-route-store', 'swm-route-store-bridge', 'swm-route-actions' ], SWM_VERSION, true );
+	wp_enqueue_script( 'swm-multi-route-ui', SWM_URL . 'assets/js/route-editor/multi-route-ui.js', [ 'swm-admin', 'swm-route-store', 'swm-route-store-bridge' ], SWM_VERSION, true );
 }, 11 );
 
 add_action( 'plugins_loaded', function () {
