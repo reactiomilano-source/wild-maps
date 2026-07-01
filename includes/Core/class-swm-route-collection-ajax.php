@@ -10,6 +10,13 @@ class Route_Collection_Ajax {
 	}
 
 	private static function project_id() {
+		if ( ! current_user_can( 'edit_posts' ) ) {
+			wp_send_json_error( [ 'message' => 'Permessi insufficienti.' ], 403 );
+		}
+		$nonce = isset( $_POST['nonce'] ) ? sanitize_text_field( wp_unslash( $_POST['nonce'] ) ) : '';
+		if ( ! wp_verify_nonce( $nonce, 'swm_admin' ) ) {
+			wp_send_json_error( [ 'message' => 'Nonce non valido.' ], 403 );
+		}
 		$project_id = isset( $_POST['project_id'] ) ? absint( $_POST['project_id'] ) : 0;
 		if ( ! $project_id || 'swm_map_project' !== get_post_type( $project_id ) ) {
 			wp_send_json_error( [ 'message' => 'Progetto non valido.' ], 400 );
