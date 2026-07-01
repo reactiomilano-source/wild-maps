@@ -19,12 +19,14 @@ require_once SWM_PATH . 'includes/class-swm-loader.php';
 \WildMaps\Loader::require_files( [
 	'includes/Core/class-swm-route-collection.php',
 	'includes/Core/class-swm-route-collection-ajax.php',
+	'includes/Core/class-swm-active-route-editor-ajax.php',
 	'includes/class-swm-plugin.php',
 	'includes/class-swm-wmap-compat.php',
 ] );
 
 \WildMaps\Core\Route_Collection::init();
 \WildMaps\Core\Route_Collection_Ajax::init();
+\WildMaps\Core\Active_Route_Editor_Ajax::init();
 
 add_action( 'admin_enqueue_scripts', function( $hook ) {
 	$screen = function_exists( 'get_current_screen' ) ? get_current_screen() : null;
