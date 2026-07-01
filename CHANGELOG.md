@@ -8,6 +8,18 @@ The format is inspired by **Keep a Changelog** and follows **Semantic Versioning
 
 ## [Unreleased]
 
+### Added
+
+- Started Wild Maps 1.3 development cycle.
+- Added `.wmap` format version constant: `SWM_WMAP_FORMAT_VERSION`.
+- Added forward-compatible `.wmap` export with a `routes` collection.
+- Added `.wmap` import adapter that accepts both 1.2 single-route files and 1.3 multi-route files.
+- Added storage of normalized route collections in `_swm_routes` while keeping legacy `_swm_route_geojson` and `_swm_route_waypoints` for compatibility.
+
+### Changed
+
+- Plugin header and `SWM_VERSION` now report `1.3.0-dev`.
+
 ### Planned
 
 - Route Editor 2.0
