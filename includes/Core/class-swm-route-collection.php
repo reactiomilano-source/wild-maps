@@ -7,6 +7,13 @@ class Route_Collection {
 	const META_KEY = '_swm_routes';
 	const DEFAULT_ROUTE_ID = 'route-main';
 
+	private static $syncing = false;
+
+	public static function init() {
+		add_action( 'updated_post_meta', [ __CLASS__, 'maybe_sync_from_legacy_meta' ], 10, 4 );
+		add_action( 'added_post_meta', [ __CLASS__, 'maybe_sync_from_legacy_meta' ], 10, 4 );
+	}
+
 	public static function default_route( $route = null, $waypoints = [] ) {
 		return [
 			'id'        => self::DEFAULT_ROUTE_ID,
@@ -75,8 +82,10 @@ class Route_Collection {
 	public static function save_project_routes( $project_id, $routes ) {
 		$routes = self::normalize_routes( $routes );
 		if ( empty( $routes ) ) { $routes = [ self::default_route() ]; }
+		self::$syncing = true;
 		update_post_meta( $project_id, self::META_KEY, wp_slash( wp_json_encode( $routes, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ) ) );
 		self::sync_legacy_route_meta( $project_id, $routes[0] );
+		self::$syncing = false;
 		return $routes;
 	}
 
@@ -89,6 +98,23 @@ class Route_Collection {
 			delete_post_meta( $project_id, '_swm_route_geojson' );
 		}
 		update_post_meta( $project_id, '_swm_route_waypoints', wp_slash( wp_json_encode( $route['waypoints'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ) ) );
+	}
+
+	public static function maybe_sync_from_legacy_meta( $meta_id, $project_id, $meta_key, $meta_value ) {
+		if ( self::$syncing || ! in_array( $meta_key, [ '_swm_route_geojson', '_swm_route_waypoints' ], true ) ) { return; }
+		if ( ! $project_id || 'swm_map_project' !== get_post_type( $project_id ) ) { return; }
+		$routes = self::get_project_routes( $project_id );
+		$main = $routes[0] ?? self::default_route();
+		$route_raw = get_post_meta( $project_id, '_swm_route_geojson', true );
+		$waypoints_raw = get_post_meta( $project_id, '_swm_route_waypoints', true );
+		$route = $route_raw ? json_decode( $route_raw, true ) : null;
+		$waypoints = $waypoints_raw ? json_decode( $waypoints_raw, true ) : [];
+		$main['geojson'] = is_array( $route ) ? $route : null;
+		$main['waypoints'] = is_array( $waypoints ) ? array_values( $waypoints ) : [];
+		$routes[0] = self::normalize_route( $main, 0 );
+		self::$syncing = true;
+		update_post_meta( $project_id, self::META_KEY, wp_slash( wp_json_encode( $routes, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ) ) );
+		self::$syncing = false;
 	}
 
 	public static function payload( $project_id ) {
