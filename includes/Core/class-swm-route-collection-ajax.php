@@ -14,7 +14,7 @@ class Route_Collection_Ajax {
 			wp_send_json_error( [ 'message' => 'Permessi insufficienti.' ], 403 );
 		}
 		$nonce = isset( $_POST['nonce'] ) ? sanitize_text_field( wp_unslash( $_POST['nonce'] ) ) : '';
-		if ( ! wp_verify_nonce( $nonce, 'swm_admin' ) ) {
+		if ( ! wp_verify_nonce( $nonce, 'swm_admin_points' ) ) {
 			wp_send_json_error( [ 'message' => 'Nonce non valido.' ], 403 );
 		}
 		$project_id = isset( $_POST['project_id'] ) ? absint( $_POST['project_id'] ) : 0;
