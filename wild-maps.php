@@ -26,6 +26,7 @@ add_action( 'admin_enqueue_scripts', function( $hook ) {
 	$is_swm_screen = false !== strpos( (string) $hook, 'wild-maps' ) || ( $screen && in_array( $screen->post_type, [ 'swm_map_point', 'swm_map_project' ], true ) );
 	if ( ! $is_swm_screen ) { return; }
 	wp_enqueue_script( 'swm-route-store', SWM_URL . 'assets/js/route-editor/route-store.js', [], SWM_VERSION, true );
+	wp_enqueue_script( 'swm-route-store-bridge', SWM_URL . 'assets/js/route-editor/route-store-bridge.js', [ 'swm-route-store' ], SWM_VERSION, true );
 }, 9 );
 
 add_action( 'plugins_loaded', function () {
