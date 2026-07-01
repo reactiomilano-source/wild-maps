@@ -70,7 +70,8 @@
 		var state = getState();
 		panel.querySelector('.swm-multi-route-list').innerHTML = state.routes.map(function (route) {
 			var active = route.id === state.activeRouteId;
-			return '<button type="button" class="button ' + (active ? 'button-primary' : '') + '" data-route-id="' + esc(route.id) + '">' + esc(route.name || route.id) + '</button>';
+			var visible = route.visible !== false;
+			return '<span class="swm-route-layer-row" style="display:inline-flex;gap:4px;align-items:center;margin:0 6px 6px 0;opacity:' + (visible ? '1' : '.45') + '"><button type="button" class="button" data-route-visibility-id="' + esc(route.id) + '" title="Toggle visibility">' + (visible ? '👁' : '🚫') + '</button><button type="button" class="button ' + (active ? 'button-primary' : '') + '" data-route-id="' + esc(route.id) + '">' + esc(route.name || route.id) + '</button></span>';
 		}).join('');
 		var activeLabel = panel.querySelector('.swm-multi-route-active');
 		if (activeLabel) activeLabel.textContent = activeRouteName();
@@ -81,7 +82,7 @@
 		var state = getState();
 		var name = window.prompt('Nome nuova route', 'Route ' + (state.routes.length + 1));
 		if (name === null) return;
-		var route = s.createRoute({ name: String(name || '').trim() || ('Route ' + (state.routes.length + 1)), waypoints: [], geojson: null });
+		var route = s.createRoute({ name: String(name || '').trim() || ('Route ' + (state.routes.length + 1)), waypoints: [], geojson: null, visible: true });
 		render();
 		saveRoutes('Route salvata: ' + (route.name || route.id) + '.');
 	}
@@ -98,6 +99,19 @@
 		s.setActiveRoute(active.id);
 		render();
 		saveRoutes('Route rinominata.');
+	}
+	function toggleRouteVisibility(routeId) {
+		var s = ensureStore();
+		if (!s || !s.getState || !routeId) return;
+		var state = s.getState();
+		var changed = null;
+		state.routes = (state.routes || []).map(function (route) {
+			if (route.id === routeId) { route.visible = route.visible === false; changed = route; }
+			return route;
+		});
+		s.load({ routes: state.routes, activeRouteId: state.activeRouteId || routeId });
+		render();
+		saveRoutes(changed ? ((changed.visible !== false ? 'Route visibile: ' : 'Route nascosta: ') + (changed.name || changed.id) + '.') : 'Visibilità route aggiornata.');
 	}
 	function nodeText(node) { return node ? String(node.textContent || '').trim() : ''; }
 	function gpxPoint(node) {
@@ -267,7 +281,7 @@
 		var panel = document.createElement('div');
 		panel.id = 'swm-multi-route-panel';
 		panel.className = 'swm-admin-route-card swm-multi-route-panel';
-		panel.innerHTML = '<h2>Routes</h2><p class="description">Active route: <strong class="swm-multi-route-active">Main route</strong></p><div class="swm-multi-route-list"></div><p><button type="button" class="button button-primary" id="swm-route-create">+ New route</button> <button type="button" class="button" id="swm-route-rename">Rename active</button> <button type="button" class="button" id="swm-route-export-gpx">Export active GPX</button> <button type="button" class="button" id="swm-route-export-all-gpx">Export all GPX ZIP</button> <button type="button" class="button" id="swm-route-export-multitrack-gpx">Export MultiTrack GPX</button></p><p class="description">Route collection is saved in this project.</p>';
+		panel.innerHTML = '<h2>Routes</h2><p class="description">Active route: <strong class="swm-multi-route-active">Main route</strong></p><div class="swm-multi-route-list"></div><p><button type="button" class="button button-primary" id="swm-route-create">+ New route</button> <button type="button" class="button" id="swm-route-rename">Rename active</button> <button type="button" class="button" id="swm-route-export-gpx">Export active GPX</button> <button type="button" class="button" id="swm-route-export-all-gpx">Export all GPX ZIP</button> <button type="button" class="button" id="swm-route-export-multitrack-gpx">Export MultiTrack GPX</button></p><p class="description">Route collection is saved in this project. Use the eye buttons to show or hide route layers.</p>';
 		routeCard.parentNode.insertBefore(panel, routeCard);
 		panel.addEventListener('click', function (event) {
 			var target = event.target;
@@ -276,6 +290,7 @@
 			if (target.id === 'swm-route-export-gpx') { event.preventDefault(); exportActiveGpx(); return; }
 			if (target.id === 'swm-route-export-all-gpx') { event.preventDefault(); exportAllGpxZip(); return; }
 			if (target.id === 'swm-route-export-multitrack-gpx') { event.preventDefault(); exportMultiTrackGpx(); return; }
+			if (target && target.getAttribute('data-route-visibility-id')) { event.preventDefault(); toggleRouteVisibility(target.getAttribute('data-route-visibility-id')); return; }
 			if (target && target.getAttribute('data-route-id')) { event.preventDefault(); var s = ensureStore(); if (s && s.setActiveRoute) s.setActiveRoute(target.getAttribute('data-route-id')); render(); saveRoutes('Route attiva: ' + activeRouteName() + '.'); }
 		});
 		mountGpxImport(panel);
