@@ -9,20 +9,46 @@
 
 ## 1.2.0
 
-- Undo / Redo
-- Autosave
-- Project history
+- PRO POI Editor
+- Backend POI preview
+- Import / Export improvements
+- Universal GPX compatibility
+- Garmin BaseCamp compatibility
+- Google My Maps compatibility
+- QMapShack compatibility
+- Tracks4Africa GPX support
+- Native `.wmap` project import/export
 
-## 1.3.0
+## 1.3.0 - Route Editor 2.0
 
-- White label settings
-- Custom logo
-- Custom roadbook footer
-- Brand colors
+Main technical goal: move Wild Maps from a single-route project model to a route-engine architecture.
+
+- Drag & drop tappe
+- Duplica tappa
+- Elimina tappa
+- Inserisci tappa tra due punti
+- Inverti percorso
+- Rinumerazione automatica
+- Multi-route nello stesso progetto
+- Layer delle route
+- Gestione stile completamente dal plugin
+- Misurazione distanze
+- Pulizia e modularizzazione del codice
+
+Detailed release plan: [`docs/ROADMAP-1.3.md`](docs/ROADMAP-1.3.md)
+
+Architecture audit: [`docs/ARCHITECTURE-1.3.md`](docs/ARCHITECTURE-1.3.md)
+
+## 1.4.0
+
+- Roadbook improvements
+- Elevation profile
+- Advanced route statistics
+- Improved import/export profiles
 
 ## 2.0.0
 
-- Advanced roadbook templates
-- Elevation profile
 - Multi-user workflow
 - Public API
+- Cloud/web app foundation
+- Marketplace-ready project model
