@@ -5,6 +5,7 @@
  * Version: 1.3.0-beta.1
  * Author: Stay Wild
  * Text Domain: wild-maps
+ * Domain Path: /languages
  */
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
@@ -13,6 +14,10 @@ define( 'SWM_VERSION', '1.3.0-beta.1' );
 define( 'SWM_PATH', plugin_dir_path( __FILE__ ) );
 define( 'SWM_URL', plugin_dir_url( __FILE__ ) );
 define( 'SWM_WMAP_FORMAT_VERSION', '1.3' );
+
+add_action( 'plugins_loaded', function () {
+	load_plugin_textdomain( 'wild-maps', false, dirname( plugin_basename( __FILE__ ) ) . '/languages' );
+}, 1 );
 
 require_once SWM_PATH . 'includes/class-swm-loader.php';
 
