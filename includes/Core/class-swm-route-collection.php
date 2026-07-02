@@ -32,8 +32,8 @@ class Route_Collection {
 
 	public static function normalize_route( $route, $index = 0 ) {
 		if ( ! is_array( $route ) ) { return null; }
-		$id = isset( $route['id'] ) && '' !== trim( (string) $route['id'] ) ? sanitize_key( $route['id'] ) : ( 0 === $index ? self::DEFAULT_ROUTE_ID : 'route-' . ( $index + 1 ) );
-		$name = isset( $route['name'] ) && '' !== trim( (string) $route['name'] ) ? sanitize_text_field( $route['name'] ) : ( self::DEFAULT_ROUTE_ID === $id ? 'Main route' : 'Route ' . ( $index + 1 ) );
+		$id = isset( $route['id'] ) && '' !== trim( (string) $route['id'] ) ? sanitize_key( $route['id'] ) : 'route-' . ( $index + 1 );
+		$name = isset( $route['name'] ) && '' !== trim( (string) $route['name'] ) ? sanitize_text_field( $route['name'] ) : 'Route ' . ( $index + 1 );
 		$style = isset( $route['style'] ) && is_array( $route['style'] ) ? $route['style'] : [];
 		$waypoints = isset( $route['waypoints'] ) && is_array( $route['waypoints'] ) ? array_values( $route['waypoints'] ) : [];
 		$geojson = isset( $route['geojson'] ) && is_array( $route['geojson'] ) ? $route['geojson'] : null;
@@ -64,27 +64,32 @@ class Route_Collection {
 
 	public static function get_project_routes( $project_id ) {
 		$stored = $project_id ? get_post_meta( $project_id, self::META_KEY, true ) : '';
-		if ( $stored ) {
+		if ( '' !== $stored && null !== $stored ) {
 			$decoded = is_string( $stored ) ? json_decode( $stored, true ) : $stored;
-			$routes = self::normalize_routes( $decoded );
-			if ( ! empty( $routes ) ) { return $routes; }
+			if ( is_array( $decoded ) ) { return self::normalize_routes( $decoded ); }
 		}
 
 		$route_raw = $project_id ? get_post_meta( $project_id, '_swm_route_geojson', true ) : '';
 		$waypoints_raw = $project_id ? get_post_meta( $project_id, '_swm_route_waypoints', true ) : '';
 		$route = $route_raw ? json_decode( $route_raw, true ) : null;
 		$waypoints = $waypoints_raw ? json_decode( $waypoints_raw, true ) : [];
-		if ( ! is_array( $waypoints ) ) { $waypoints = []; }
+		if ( is_array( $route ) || ( is_array( $waypoints ) && ! empty( $waypoints ) ) ) {
+			return [ self::default_route( is_array( $route ) ? $route : null, is_array( $waypoints ) ? $waypoints : [] ) ];
+		}
 
-		return [ self::default_route( is_array( $route ) ? $route : null, $waypoints ) ];
+		return [];
 	}
 
 	public static function save_project_routes( $project_id, $routes ) {
 		$routes = self::normalize_routes( $routes );
-		if ( empty( $routes ) ) { $routes = [ self::default_route() ]; }
 		self::$syncing = true;
 		update_post_meta( $project_id, self::META_KEY, wp_slash( wp_json_encode( $routes, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ) ) );
-		self::sync_legacy_route_meta( $project_id, $routes[0] );
+		if ( ! empty( $routes ) ) {
+			self::sync_legacy_route_meta( $project_id, $routes[0] );
+		} else {
+			delete_post_meta( $project_id, '_swm_route_geojson' );
+			delete_post_meta( $project_id, '_swm_route_waypoints' );
+		}
 		self::$syncing = false;
 		return $routes;
 	}
@@ -120,7 +125,7 @@ class Route_Collection {
 	public static function payload( $project_id ) {
 		$routes = self::get_project_routes( $project_id );
 		return [
-			'active_route_id' => $routes[0]['id'] ?? self::DEFAULT_ROUTE_ID,
+			'active_route_id' => $routes[0]['id'] ?? '',
 			'routes'          => $routes,
 		];
 	}
