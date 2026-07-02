@@ -2,14 +2,14 @@
 /**
  * Plugin Name: Wild Maps
  * Description: Elementor widget with MapLibre + MapTiler for Wild Maps.
- * Version: 1.3.0-beta.2
+ * Version: 1.3.0-beta.3
  * Author: Stay Wild
  * Text Domain: wild-maps
  */
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
-define( 'SWM_VERSION', '1.3.0-beta.2' );
+define( 'SWM_VERSION', '1.3.0-beta.3' );
 define( 'SWM_PATH', plugin_dir_path( __FILE__ ) );
 define( 'SWM_URL', plugin_dir_url( __FILE__ ) );
 define( 'SWM_WMAP_FORMAT_VERSION', '1.3' );
@@ -51,6 +51,7 @@ add_action( 'admin_enqueue_scripts', function( $hook ) {
 	wp_enqueue_script( 'swm-route-styling-ui', SWM_URL . 'assets/js/route-editor/route-styling-ui.js', [ 'swm-admin', 'swm-route-store', 'swm-multi-route-ui' ], SWM_VERSION, true );
 	wp_enqueue_script( 'swm-route-layer-renderer', SWM_URL . 'assets/js/route-editor/route-layer-renderer.js', [ 'swm-admin', 'swm-route-store', 'swm-multi-route-ui', 'swm-route-styling-ui' ], SWM_VERSION, true );
 	wp_enqueue_script( 'swm-layout-composer', SWM_URL . 'assets/js/route-editor/layout-composer.js', [ 'swm-admin', 'swm-route-store', 'swm-multi-route-ui' ], SWM_VERSION, true );
+	wp_enqueue_script( 'swm-route-save-collection-override', SWM_URL . 'assets/js/route-editor/route-save-collection-override.js', [ 'swm-admin', 'swm-route-store', 'swm-route-store-bridge', 'swm-multi-route-ui' ], SWM_VERSION, true );
 }, 11 );
 
 add_action( 'plugins_loaded', function () {
