@@ -26,7 +26,10 @@ class Route_Collection_Ajax {
 
 	public static function get_routes() {
 		$project_id = self::project_id();
-		wp_send_json_success( Route_Collection::payload( $project_id ) );
+		Route_Collection::debug_note( 'ajax_get_routes_start', [ 'project_id' => $project_id ] );
+		$payload = Route_Collection::payload( $project_id );
+		$payload['swm_debug'] = Route_Collection::debug_dump();
+		wp_send_json_success( $payload );
 	}
 
 	public static function save_routes() {
@@ -34,9 +37,11 @@ class Route_Collection_Ajax {
 		$raw = isset( $_POST['routes'] ) ? wp_unslash( $_POST['routes'] ) : '[]';
 		$routes = json_decode( $raw, true );
 		if ( ! is_array( $routes ) ) { $routes = []; }
+		Route_Collection::debug_note( 'ajax_save_routes_request', [ 'project_id' => $project_id, 'raw_length' => strlen( (string) $raw ), 'routes' => Route_Collection::debug_routes( $routes ) ] );
 		$routes = Route_Collection::save_project_routes( $project_id, $routes );
 		$active_route_id = isset( $_POST['active_route_id'] ) ? sanitize_key( wp_unslash( $_POST['active_route_id'] ) ) : ( $routes[0]['id'] ?? Route_Collection::DEFAULT_ROUTE_ID );
 		update_post_meta( $project_id, '_swm_active_route_id', $active_route_id );
-		wp_send_json_success( [ 'active_route_id' => $active_route_id, 'routes' => $routes ] );
+		Route_Collection::debug_note( 'ajax_save_routes_response', [ 'active_route_id' => $active_route_id, 'routes' => Route_Collection::debug_routes( $routes ) ] );
+		wp_send_json_success( [ 'active_route_id' => $active_route_id, 'routes' => $routes, 'swm_debug' => Route_Collection::debug_dump() ] );
 	}
 }
