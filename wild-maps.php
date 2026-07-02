@@ -58,5 +58,12 @@ add_action( 'plugins_loaded', function () {
 } );
 
 add_action( 'plugins_loaded', function () {
+	remove_all_actions( 'wp_ajax_swm_admin_get_route' );
+	remove_all_actions( 'wp_ajax_swm_admin_save_route' );
+	add_action( 'wp_ajax_swm_admin_get_route', [ '\\WildMaps\\Core\\Active_Route_Editor_Ajax', 'get_active_route' ], 1 );
+	add_action( 'wp_ajax_swm_admin_save_route', [ '\\WildMaps\\Core\\Active_Route_Editor_Ajax', 'save_active_route' ], 1 );
+}, 5 );
+
+add_action( 'plugins_loaded', function () {
 	\WildMaps\Wmap_Compat::instance();
 }, 20 );
