@@ -24,16 +24,33 @@
 		return payload && (payload.route || (Array.isArray(payload.waypoints) && payload.waypoints.length));
 	}
 
+	function syncLegacyIntoActive(payload, source) {
+		var state = store.getState ? store.getState() : { routes: [], activeRouteId: '' };
+		var activeId = payload.active_route_id || payload.activeRouteId || state.activeRouteId || '';
+		var routes = Array.isArray(state.routes) ? state.routes : [];
+		var found = false;
+		routes = routes.map(function (route) {
+			if (route.id !== activeId) return route;
+			found = true;
+			route.geojson = payload.route || route.geojson || null;
+			route.waypoints = Array.isArray(payload.waypoints) ? payload.waypoints : (route.waypoints || []);
+			return route;
+		});
+		if (found) {
+			store.load({ routes: routes, activeRouteId: activeId });
+			store.emit('legacy:sync', { source: source || 'unknown' });
+		}
+	}
+
 	function syncFromPayload(payload, source) {
 		if (!payload || typeof payload !== 'object') return;
 		if (Array.isArray(payload.routes)) {
 			store.load({ routes: payload.routes, activeRouteId: payload.active_route_id || payload.activeRouteId || '' });
 		} else if (hasLegacyPayload(payload)) {
-			store.load({ route: payload.route || null, waypoints: Array.isArray(payload.waypoints) ? payload.waypoints : [] });
-		} else {
+			syncLegacyIntoActive(payload, source);
+		} else if (source === 'swm_admin_get_routes' || source === 'swm_admin_save_routes') {
 			store.load({ routes: [], activeRouteId: '' });
 		}
-		store.emit('legacy:sync', { source: source || 'unknown' });
 	}
 
 	function syncFromRequest(params, source) {
@@ -41,8 +58,7 @@
 		var waypoints = parseJson(params.get('waypoints'), []);
 		var route = parseJson(params.get('route'), null);
 		if (!route && !waypoints.length) return;
-		store.load({ route: route, waypoints: Array.isArray(waypoints) ? waypoints : [] });
-		store.emit('legacy:request-sync', { source: source || 'unknown' });
+		syncLegacyIntoActive({ route: route, waypoints: waypoints }, source);
 	}
 
 	var originalFetch = window.fetch;
