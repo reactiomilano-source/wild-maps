@@ -1,0 +1,1 @@
+(function(){function e(i){return document.getElementById(i)}function run(){var a=e('swm-current-project'),b=e('swm-gpx-project');if(a&&b&&a.options&&a.options.length>1&&b.options.length<=1){b.innerHTML=a.innerHTML;b.value=a.value||b.options[1].value}setTimeout(run,500)}if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',run);else run()})();
