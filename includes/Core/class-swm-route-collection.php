@@ -81,10 +81,14 @@ class Route_Collection {
 
 	public static function save_project_routes( $project_id, $routes ) {
 		$routes = self::normalize_routes( $routes );
-		if ( empty( $routes ) ) { $routes = [ self::default_route() ]; }
 		self::$syncing = true;
 		update_post_meta( $project_id, self::META_KEY, wp_slash( wp_json_encode( $routes, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ) ) );
-		self::sync_legacy_route_meta( $project_id, $routes[0] );
+		if ( ! empty( $routes ) ) {
+			self::sync_legacy_route_meta( $project_id, $routes[0] );
+		} else {
+			delete_post_meta( $project_id, '_swm_route_geojson' );
+			delete_post_meta( $project_id, '_swm_route_waypoints' );
+		}
 		self::$syncing = false;
 		return $routes;
 	}
