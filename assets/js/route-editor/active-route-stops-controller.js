@@ -10,6 +10,7 @@
 		'swm-route-save-list': true,
 		'swm-route-clear': true
 	};
+	var draggingStopIndex = null;
 
 	var originalAddEventListener = EventTarget.prototype.addEventListener;
 	if (!window.__swmActiveRouteStopsPatched) {
@@ -113,16 +114,46 @@
 		var route = activeRoute();
 		renderList(route && route.visible !== false ? (route.waypoints || []) : []);
 	}
+	function reorderStop(from, to) {
+		var route = activeRoute(); if (!route) return;
+		var wp = (route.waypoints || []).slice();
+		from = Number(from); to = Number(to);
+		if (from < 0 || from >= wp.length || to < 0 || to >= wp.length || from === to) return;
+		var item = wp.splice(from, 1)[0];
+		wp.splice(to, 0, item);
+		updateActiveRoute({ waypoints: wp, geojson: null });
+		render();
+		status('Stop order updated. Recalculate and save the route.', 'info');
+	}
 	function renderList(waypoints) {
 		var list = byId('swm-route-waypoints-list');
 		if (!list) return;
 		if (!waypoints.length) { list.innerHTML = '<li class="swm-route-empty">No stops yet. Enable Route mode and click the map, or search a place and add it as a stop.</li>'; return; }
 		list.innerHTML = waypoints.map(function (wp, index) {
 			var lng = Number(wp[0]); var lat = Number(wp[1]); var name = wp[2] || '';
-			return '<li class="swm-route-waypoint-row" data-index="' + index + '"><span class="swm-route-number">' + (index + 1) + '</span><div class="swm-route-waypoint-main"><input type="text" class="regular-text swm-route-name" value="' + esc(name) + '" placeholder="Stop name" /><code>' + lat.toFixed(6) + ', ' + lng.toFixed(6) + '</code><div class="swm-route-waypoint-actions"><button type="button" class="button-link swm-route-zoom">centra</button><button type="button" class="button-link swm-route-up">su</button><button type="button" class="button-link swm-route-down">giù</button><button type="button" class="button-link-delete swm-route-remove">rimuovi</button></div></div></li>';
+			return '<li class="swm-route-waypoint-row" data-index="' + index + '" draggable="true"><span class="swm-route-drag-handle" title="Drag to reorder">↕</span><span class="swm-route-number">' + (index + 1) + '</span><div class="swm-route-waypoint-main"><input type="text" class="regular-text swm-route-name" value="' + esc(name) + '" placeholder="Stop name" /><code>' + lat.toFixed(6) + ', ' + lng.toFixed(6) + '</code><div class="swm-route-waypoint-actions"><button type="button" class="button-link swm-route-zoom">centra</button><button type="button" class="button-link swm-route-up">su</button><button type="button" class="button-link swm-route-down">giù</button><button type="button" class="button-link-delete swm-route-remove">rimuovi</button></div></div></li>';
 		}).join('');
 		Array.prototype.forEach.call(list.querySelectorAll('li[data-index]'), function (row) {
 			var index = Number(row.getAttribute('data-index'));
+			row.addEventListener('dragstart', mark(function (event) {
+				draggingStopIndex = index;
+				row.classList.add('is-dragging');
+				if (event.dataTransfer) {
+					event.dataTransfer.effectAllowed = 'move';
+					event.dataTransfer.setData('text/plain', String(index));
+				}
+			}));
+			row.addEventListener('dragover', mark(function (event) { event.preventDefault(); row.classList.add('is-drop-target'); if (event.dataTransfer) event.dataTransfer.dropEffect = 'move'; }));
+			row.addEventListener('dragleave', mark(function () { row.classList.remove('is-drop-target'); }));
+			row.addEventListener('dragend', mark(function () { row.classList.remove('is-dragging'); row.classList.remove('is-drop-target'); draggingStopIndex = null; }));
+			row.addEventListener('drop', mark(function (event) {
+				event.preventDefault();
+				row.classList.remove('is-drop-target');
+				var from = draggingStopIndex;
+				if (event.dataTransfer && event.dataTransfer.getData('text/plain') !== '') from = Number(event.dataTransfer.getData('text/plain'));
+				reorderStop(from, index);
+				draggingStopIndex = null;
+			}));
 			var input = row.querySelector('.swm-route-name');
 			if (input) input.addEventListener('change', mark(function () { var route = activeRoute(); if (!route) return; var wp = (route.waypoints || []).slice(); if (wp[index]) wp[index] = [wp[index][0], wp[index][1], input.value]; updateActiveRoute({ waypoints: wp }); render(); }));
 			var remove = row.querySelector('.swm-route-remove'); if (remove) remove.addEventListener('click', mark(function () { removeStop(index); }));
