@@ -13,7 +13,7 @@ class Frontend_Routes_REST {
 			'methods'             => 'GET',
 			'callback'            => [ __CLASS__, 'project_route' ],
 			'permission_callback' => '__return_true',
-			'args'                => [ 'project_id' => [ 'required' => true, 'sanitize_callback' => 'absint' ] ],
+			'args'                => [ 'project_id' => [ 'required' => false, 'sanitize_callback' => 'absint' ] ],
 		], true );
 	}
 
@@ -97,8 +97,26 @@ class Frontend_Routes_REST {
 		return [ 'type' => 'FeatureCollection', 'features' => $features ];
 	}
 
+	private static function fallback_project_id() {
+		$ids = get_posts( [
+			'post_type'      => 'swm_map_project',
+			'post_status'    => 'publish',
+			'posts_per_page' => 1,
+			'orderby'        => 'modified',
+			'order'          => 'DESC',
+			'fields'         => 'ids',
+			'meta_query'     => [
+				'relation' => 'OR',
+				[ 'key' => '_swm_routes', 'compare' => 'EXISTS' ],
+				[ 'key' => '_swm_route_geojson', 'compare' => 'EXISTS' ],
+			],
+		] );
+		return ! empty( $ids[0] ) ? (int) $ids[0] : 0;
+	}
+
 	public static function project_route( $request ) {
 		$project_id = isset( $request['project_id'] ) ? absint( $request['project_id'] ) : 0;
+		if ( ! $project_id ) { $project_id = self::fallback_project_id(); }
 		if ( ! $project_id || 'swm_map_project' !== get_post_type( $project_id ) ) {
 			return rest_ensure_response( self::empty_collection() );
 		}
