@@ -11,6 +11,7 @@
 		'swm-route-clear': true
 	};
 	var draggingStopIndex = null;
+	var draggingMapStop = null;
 
 	var originalAddEventListener = EventTarget.prototype.addEventListener;
 	if (!window.__swmActiveRouteStopsPatched) {
@@ -39,6 +40,7 @@
 	}
 	function state() { var s = store(); return s && s.getState ? s.getState() : { routes: [], activeRouteId: '' }; }
 	function activeRoute() { var st = state(); return (st.routes || []).find(function (route) { return route.id === st.activeRouteId; }) || null; }
+	function activeRouteId() { var route = activeRoute(); return route ? route.id : ''; }
 	function updateActiveRoute(patch) {
 		var s = store();
 		if (!s || !s.getState || !s.load) return false;
@@ -125,6 +127,16 @@
 		render();
 		status('Stop order updated. Recalculate and save the route.', 'info');
 	}
+	function moveStopToLngLat(index, lngLat, finalMove) {
+		var route = activeRoute(); if (!route || !lngLat) return;
+		var wp = (route.waypoints || []).slice();
+		index = Number(index);
+		if (index < 0 || index >= wp.length) return;
+		wp[index] = [Number(Number(lngLat.lng).toFixed(6)), Number(Number(lngLat.lat).toFixed(6)), wp[index][2] || ('Stop ' + (index + 1))];
+		updateActiveRoute({ waypoints: wp, geojson: null });
+		render();
+		if (finalMove) status('Stop moved. Recalculate and save the route.', 'info');
+	}
 	function renderList(waypoints) {
 		var list = byId('swm-route-waypoints-list');
 		if (!list) return;
@@ -201,17 +213,53 @@
 		var reverse = byId('swm-route-reverse'); if (reverse && !reverse.__swmActiveRouteStops) { reverse.__swmActiveRouteStops = true; reverse.addEventListener('click', mark(function (e) { e.preventDefault(); var route = activeRoute(); if (!route) return; updateActiveRoute({ waypoints:(route.waypoints || []).slice().reverse(), geojson:null }); render(); })); }
 		var saveList = byId('swm-route-save-list'); if (saveList && !saveList.__swmActiveRouteStops) { saveList.__swmActiveRouteStops = true; saveList.addEventListener('click', mark(function (e) { e.preventDefault(); saveCollection('Elenco tappe salvato.'); })); }
 	}
+	function bindWaypointMapDrag(map) {
+		if (!map || map.__swmWaypointMapDragBound) return;
+		map.__swmWaypointMapDragBound = true;
+		function startDrag(event) {
+			if (!event.features || !event.features[0]) return;
+			var feature = event.features[0];
+			var props = feature.properties || {};
+			if (props.route_id && props.route_id !== activeRouteId()) return;
+			draggingMapStop = { index: Number(props.index) };
+			if (map.dragPan && map.dragPan.disable) map.dragPan.disable();
+			map.getCanvas().style.cursor = 'grabbing';
+			event.preventDefault();
+		}
+		function moveDrag(event) {
+			if (!draggingMapStop) return;
+			moveStopToLngLat(draggingMapStop.index, event.lngLat, false);
+		}
+		function endDrag(event) {
+			if (!draggingMapStop) return;
+			moveStopToLngLat(draggingMapStop.index, event && event.lngLat ? event.lngLat : null, true);
+			draggingMapStop = null;
+			if (map.dragPan && map.dragPan.enable) map.dragPan.enable();
+			map.getCanvas().style.cursor = '';
+		}
+		map.on('mouseenter', 'swm-admin-route-waypoint-circles', function () { if (!draggingMapStop) map.getCanvas().style.cursor = 'grab'; });
+		map.on('mouseleave', 'swm-admin-route-waypoint-circles', function () { if (!draggingMapStop) map.getCanvas().style.cursor = ''; });
+		map.on('mousedown', 'swm-admin-route-waypoint-circles', startDrag);
+		map.on('mousedown', 'swm-admin-route-waypoint-labels', startDrag);
+		map.on('mousemove', moveDrag);
+		map.on('mouseup', endDrag);
+		map.on('mouseleave', endDrag);
+	}
 	function bindMap(map) {
 		if (!map || map.__swmActiveRouteStopsBound) return;
 		map.__swmActiveRouteStopsBound = true;
 		map.on('click', function (event) {
+			if (draggingMapStop) return;
 			if (!routeMode) return;
 			var defaultName = 'Stop ' + (((activeRoute() && activeRoute().waypoints) || []).length + 1);
 			var name = window.prompt('Stop name', defaultName);
 			if (name === null) name = defaultName;
 			addStop(event.lngLat.lng, event.lngLat.lat, String(name || defaultName).trim());
 		});
-		map.on('load', render); map.on('styledata', render); render();
+		map.on('load', function () { render(); bindWaypointMapDrag(map); });
+		map.on('styledata', function () { render(); bindWaypointMapDrag(map); });
+		render();
+		bindWaypointMapDrag(map);
 	}
 	function boot() {
 		bindButtons();
