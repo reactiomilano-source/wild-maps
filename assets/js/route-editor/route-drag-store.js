@@ -8,76 +8,74 @@
 		el.textContent = text || '';
 		el.className = type ? 'is-' + type : '';
 	}
-	function currentProjectId() {
-		var el = byId('swm-current-project');
-		return el ? el.value : '';
-	}
-	function parseWaypointRow(row) {
-		var code = row.querySelector('code');
-		var nameInput = row.querySelector('.swm-route-name');
-		if (!code) return null;
-		var parts = String(code.textContent || '').split(',');
-		if (parts.length < 2) return null;
-		var lat = Number(parts[0].trim());
-		var lng = Number(parts[1].trim());
-		if (!isFinite(lat) || !isFinite(lng)) return null;
-		return [Number(lng.toFixed(6)), Number(lat.toFixed(6)), nameInput ? nameInput.value : ''];
-	}
-	function readWaypointsFromDom() {
-		var list = byId('swm-route-waypoints-list');
-		if (!list) return [];
-		return Array.prototype.slice.call(list.querySelectorAll('li[data-index]')).map(parseWaypointRow).filter(Boolean);
-	}
-	function post(action, data) {
-		var body = new URLSearchParams(Object.assign({ action: action, nonce: window.SWM_ADMIN ? window.SWM_ADMIN.nonce : '' }, data || {}));
-		return fetch(window.SWM_ADMIN.ajaxUrl, {
-			method: 'POST',
-			credentials: 'same-origin',
-			headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
-			body: body.toString()
-		}).then(function (r) { return r.json(); }).then(function (json) {
-			if (!json || !json.success) throw new Error((json && json.data && json.data.message) || 'Errore salvataggio.');
-			return json.data;
+	function store() { return window.WildMapsRouteEditorStore || null; }
+	function state() { var s = store(); return s && s.getState ? s.getState() : { routes: [], activeRouteId: '' }; }
+	function activeRoute() { var st = state(); return (st.routes || []).find(function (route) { return route.id === st.activeRouteId; }) || null; }
+	function activeRouteId() { var route = activeRoute(); return route ? route.id : ''; }
+	function updateActiveWaypoint(index, lngLat, finalMove) {
+		var s = store();
+		if (!s || !s.getState || !s.load || !lngLat) return;
+		var st = s.getState();
+		var routeId = st.activeRouteId;
+		var routes = (st.routes || []).map(function (route) {
+			if (route.id !== routeId) return route;
+			var waypoints = (route.waypoints || []).slice();
+			index = Number(index);
+			if (index < 0 || index >= waypoints.length) return route;
+			waypoints[index] = [Number(Number(lngLat.lng).toFixed(6)), Number(Number(lngLat.lat).toFixed(6)), waypoints[index][2] || ('Stop ' + (index + 1))];
+			return Object.assign({}, route, { waypoints: waypoints, geojson: null });
 		});
+		s.load({ routes: routes, activeRouteId: routeId });
+		if (finalMove) routeStatus('Stop moved. Recalculate and save the route.', 'info');
 	}
-	function syncAndPersistDrag() {
-		var waypoints = readWaypointsFromDom();
-		if (!waypoints.length || !currentProjectId()) return;
-		if (window.WildMapsRouteEditorStore && window.WildMapsRouteEditorStore.load) {
-			window.WildMapsRouteEditorStore.load({ route: null, waypoints: waypoints });
-		}
-		post('swm_admin_save_route', {
-			project_id: currentProjectId(),
-			route: '',
-			waypoints: JSON.stringify(waypoints),
-			allow_empty_route: '1'
-		}).then(function () {
-			routeStatus('Ordine tappe salvato. Ricalcola il percorso su strada.', 'success');
-		}).catch(function (e) {
-			routeStatus(e.message, 'error');
-		});
-	}
-	function enhanceDragRows() {
-		var list = byId('swm-route-waypoints-list');
-		if (!list) return;
-		Array.prototype.slice.call(list.querySelectorAll('li[data-index]')).forEach(function (row) {
-			if (row.getAttribute('data-swm-drag-store-ready') === '1') return;
-			row.setAttribute('data-swm-drag-store-ready', '1');
-			row.addEventListener('drop', function () {
-				window.setTimeout(syncAndPersistDrag, 80);
+	function bindMapStopDrag(map) {
+		if (!map || map.__swmRobustStopDragBound) return;
+		map.__swmRobustStopDragBound = true;
+		var drag = null;
+		function waypointLayers() {
+			return ['swm-admin-route-waypoint-circles', 'swm-admin-route-waypoint-labels'].filter(function (id) {
+				return !!(map.getLayer && map.getLayer(id));
 			});
+		}
+		function featureAt(event) {
+			var layers = waypointLayers();
+			if (!layers.length || !map.queryRenderedFeatures) return null;
+			var features = map.queryRenderedFeatures(event.point, { layers: layers }) || [];
+			return features[0] || null;
+		}
+		map.on('mousedown', function (event) {
+			var feature = featureAt(event);
+			if (!feature) return;
+			var props = feature.properties || {};
+			if (props.route_id && props.route_id !== activeRouteId()) return;
+			drag = { index: Number(props.index) };
+			if (map.dragPan && map.dragPan.disable) map.dragPan.disable();
+			map.getCanvas().style.cursor = 'grabbing';
+			event.preventDefault();
 		});
+		map.on('mousemove', function (event) {
+			if (drag) {
+				updateActiveWaypoint(drag.index, event.lngLat, false);
+				return;
+			}
+			map.getCanvas().style.cursor = featureAt(event) ? 'grab' : '';
+		});
+		function end(event) {
+			if (!drag) return;
+			updateActiveWaypoint(drag.index, event && event.lngLat ? event.lngLat : null, true);
+			drag = null;
+			if (map.dragPan && map.dragPan.enable) map.dragPan.enable();
+			map.getCanvas().style.cursor = '';
+		}
+		map.on('mouseup', end);
+		map.on('mouseleave', end);
+	}
+	function bootMapDrag() {
+		if (window.WildMapsAdminMap) bindMapStopDrag(window.WildMapsAdminMap);
+		window.setTimeout(bootMapDrag, 500);
 	}
 	function init() {
-		var list = byId('swm-route-waypoints-list');
-		if (!list || !window.SWM_ADMIN || !window.fetch) return;
-		enhanceDragRows();
-		var observer = new MutationObserver(function () { enhanceDragRows(); });
-		observer.observe(list, { childList: true, subtree: true });
+		bootMapDrag();
 	}
-	if (document.readyState === 'loading') {
-		document.addEventListener('DOMContentLoaded', init);
-	} else {
-		init();
-	}
+	if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 })(window, document);
