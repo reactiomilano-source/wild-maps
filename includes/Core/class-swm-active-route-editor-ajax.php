@@ -28,14 +28,14 @@ class Active_Route_Editor_Ajax {
 				if ( isset( $route['id'] ) && (string) $route['id'] === (string) $active ) { return (string) $active; }
 			}
 		}
-		return $routes[0]['id'] ?? Route_Collection::DEFAULT_ROUTE_ID;
+		return $routes[0]['id'] ?? '';
 	}
 
 	private static function find_active_index( $routes, $active_route_id ) {
 		foreach ( $routes as $index => $route ) {
 			if ( isset( $route['id'] ) && (string) $route['id'] === (string) $active_route_id ) { return (int) $index; }
 		}
-		return 0;
+		return -1;
 	}
 
 	public static function get_active_route() {
@@ -43,12 +43,12 @@ class Active_Route_Editor_Ajax {
 		$routes = Route_Collection::get_project_routes( $project_id );
 		$active_route_id = self::active_route_id( $project_id, $routes );
 		$index = self::find_active_index( $routes, $active_route_id );
-		$route = $routes[ $index ] ?? Route_Collection::default_route();
+		$route = ( $index >= 0 && isset( $routes[ $index ] ) ) ? $routes[ $index ] : null;
 
 		wp_send_json_success( [
 			'route' => $route['geojson'] ?? null,
 			'waypoints' => isset( $route['waypoints'] ) && is_array( $route['waypoints'] ) ? array_values( $route['waypoints'] ) : [],
-			'active_route_id' => $route['id'] ?? $active_route_id,
+			'active_route_id' => $route['id'] ?? '',
 		] );
 	}
 
@@ -70,8 +70,8 @@ class Active_Route_Editor_Ajax {
 		$routes = Route_Collection::get_project_routes( $project_id );
 		$active_route_id = self::active_route_id( $project_id, $routes );
 		$index = self::find_active_index( $routes, $active_route_id );
-		if ( empty( $routes[ $index ] ) ) {
-			$routes[ $index ] = Route_Collection::default_route();
+		if ( $index < 0 || empty( $routes[ $index ] ) ) {
+			wp_send_json_error( [ 'message' => 'Nessuna route attiva da salvare.' ], 400 );
 		}
 		$routes[ $index ]['geojson'] = is_array( $route_geojson ) ? $route_geojson : null;
 		$routes[ $index ]['waypoints'] = array_values( $waypoints );
