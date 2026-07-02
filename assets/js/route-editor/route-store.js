@@ -14,10 +14,19 @@
 		return [Number(lng.toFixed(6)), Number(lat.toFixed(6)), name];
 	}
 
+	function isEmptyMainRoute(route) {
+		if (!route || typeof route !== 'object') return false;
+		var waypoints = Array.isArray(route.waypoints) ? route.waypoints : [];
+		return String(route.id || '') === 'route-main'
+			&& (!route.name || String(route.name) === 'Main route')
+			&& !route.geojson
+			&& !waypoints.length;
+	}
+
 	function defaultRoute(id, name) {
 		return {
-			id: id || 'route-main',
-			name: name || 'Main route',
+			id: id || ('route-' + Date.now()),
+			name: name || 'Route',
 			visible: true,
 			locked: false,
 			style: {
@@ -32,10 +41,10 @@
 
 	function RouteStore(initialState) {
 		this.listeners = {};
-		this.activeRouteId = 'route-main';
+		this.activeRouteId = '';
 		this.routes = [];
 		this.dirty = false;
-		this.load(initialState || {});
+		this.load(initialState || { routes: [] });
 	}
 
 	RouteStore.prototype.on = function (eventName, callback) {
@@ -65,8 +74,8 @@
 	RouteStore.prototype.normalizeRoutes = function (routes) {
 		var normalized = [];
 		(routes || []).forEach(function (route, index) {
-			if (!route || typeof route !== 'object') return;
-			var item = defaultRoute(route.id || (index === 0 ? 'route-main' : 'route-' + (index + 1)), route.name || (index === 0 ? 'Main route' : 'Route ' + (index + 1)));
+			if (!route || typeof route !== 'object' || isEmptyMainRoute(route)) return;
+			var item = defaultRoute(route.id || ('route-' + (index + 1)), route.name || ('Route ' + (index + 1)));
 			item.visible = route.visible !== false;
 			item.locked = !!route.locked;
 			item.style = Object.assign({}, item.style, route.style || {});
@@ -74,22 +83,18 @@
 			item.waypoints = (Array.isArray(route.waypoints) ? route.waypoints : []).map(normalizeWaypoint).filter(Boolean);
 			normalized.push(item);
 		});
-		if (!normalized.length) normalized.push(defaultRoute());
 		return normalized;
 	};
 
 	RouteStore.prototype.load = function (state) {
 		if (Array.isArray(state.routes)) {
 			this.routes = this.normalizeRoutes(state.routes);
+		} else if (state.route || (Array.isArray(state.waypoints) && state.waypoints.length)) {
+			this.routes = this.normalizeRoutes([{ id: 'route-main', name: 'Main route', geojson: state.route || null, waypoints: state.waypoints }]);
 		} else {
-			this.routes = this.normalizeRoutes([{
-				id: 'route-main',
-				name: 'Main route',
-				geojson: state.route || null,
-				waypoints: Array.isArray(state.waypoints) ? state.waypoints : []
-			}]);
+			this.routes = [];
 		}
-		this.activeRouteId = state.activeRouteId || (this.routes[0] && this.routes[0].id) || 'route-main';
+		this.activeRouteId = state.activeRouteId || (this.routes[0] && this.routes[0].id) || '';
 		this.dirty = false;
 		this.emit('route:loaded', { routeId: this.activeRouteId });
 	};
