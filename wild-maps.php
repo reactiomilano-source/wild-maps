@@ -2,14 +2,14 @@
 /**
  * Plugin Name: Wild Maps
  * Description: Elementor widget with MapLibre + MapTiler for Wild Maps.
- * Version: 1.3.0-beta.4
+ * Version: 1.3.0-beta.5
  * Author: Stay Wild
  * Text Domain: wild-maps
  */
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
-define( 'SWM_VERSION', '1.3.0-beta.4' );
+define( 'SWM_VERSION', '1.3.0-beta.5' );
 define( 'SWM_PATH', plugin_dir_path( __FILE__ ) );
 define( 'SWM_URL', plugin_dir_url( __FILE__ ) );
 define( 'SWM_WMAP_FORMAT_VERSION', '1.3' );
