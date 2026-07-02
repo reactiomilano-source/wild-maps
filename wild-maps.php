@@ -2,14 +2,14 @@
 /**
  * Plugin Name: Wild Maps
  * Description: Elementor widget with MapLibre + MapTiler for Wild Maps.
- * Version: 1.3.0-beta.1
+ * Version: 1.3.0-beta.5
  * Author: Stay Wild
  * Text Domain: wild-maps
  */
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
-define( 'SWM_VERSION', '1.3.0-beta.1' );
+define( 'SWM_VERSION', '1.3.0-beta.5' );
 define( 'SWM_PATH', plugin_dir_path( __FILE__ ) );
 define( 'SWM_URL', plugin_dir_url( __FILE__ ) );
 define( 'SWM_WMAP_FORMAT_VERSION', '1.3' );
@@ -37,6 +37,7 @@ add_action( 'admin_enqueue_scripts', function( $hook ) {
 	wp_enqueue_script( 'swm-route-map-capture', SWM_URL . 'assets/js/route-editor/route-map-capture.js', [], SWM_VERSION, true );
 	wp_enqueue_script( 'swm-route-store', SWM_URL . 'assets/js/route-editor/route-store.js', [], SWM_VERSION, true );
 	wp_enqueue_script( 'swm-route-store-bridge', SWM_URL . 'assets/js/route-editor/route-store-bridge.js', [ 'swm-route-store' ], SWM_VERSION, true );
+	wp_enqueue_script( 'swm-active-route-stops-controller', SWM_URL . 'assets/js/route-editor/active-route-stops-controller.js', [ 'swm-route-map-capture', 'swm-route-store', 'swm-route-store-bridge' ], SWM_VERSION, true );
 	wp_enqueue_script( 'swm-version-badge', SWM_URL . 'assets/js/admin-version-badge.js', [], SWM_VERSION, true );
 }, 9 );
 
@@ -56,6 +57,13 @@ add_action( 'admin_enqueue_scripts', function( $hook ) {
 add_action( 'plugins_loaded', function () {
 	\WildMaps\Plugin::instance();
 } );
+
+add_action( 'plugins_loaded', function () {
+	remove_all_actions( 'wp_ajax_swm_admin_get_route' );
+	remove_all_actions( 'wp_ajax_swm_admin_save_route' );
+	add_action( 'wp_ajax_swm_admin_get_route', [ '\\WildMaps\\Core\\Active_Route_Editor_Ajax', 'get_active_route' ], 1 );
+	add_action( 'wp_ajax_swm_admin_save_route', [ '\\WildMaps\\Core\\Active_Route_Editor_Ajax', 'save_active_route' ], 1 );
+}, 30 );
 
 add_action( 'plugins_loaded', function () {
 	\WildMaps\Wmap_Compat::instance();

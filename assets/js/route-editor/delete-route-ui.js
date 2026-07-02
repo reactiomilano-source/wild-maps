@@ -13,7 +13,7 @@
 		el.textContent = text || '';
 		el.className = type ? 'is-' + type : '';
 	}
-	function saveRoutes(state) {
+	function saveRoutes(state, deletedRouteId) {
 		if (!window.SWM_ADMIN || !currentProjectId()) return;
 		var body = new URLSearchParams({
 			action: 'swm_admin_save_routes',
@@ -35,6 +35,7 @@
 			if (s && s.load) {
 				s.load({ routes: json.data.routes || state.routes || [], activeRouteId: json.data.active_route_id || state.activeRouteId || '' });
 			}
+			window.dispatchEvent(new CustomEvent('swm:route-deleted', { detail: { routeId: deletedRouteId || '', activeRouteId: state.activeRouteId || '' } }));
 			status('Route deleted.', 'success');
 		}).catch(function (error) {
 			status(error.message, 'error');
@@ -52,7 +53,8 @@
 		var nextActiveId = state.activeRouteId === routeId ? ((nextRoutes[0] && nextRoutes[0].id) || '') : state.activeRouteId;
 		if (!nextRoutes.length) nextActiveId = '';
 		if (s.load) s.load({ routes: nextRoutes, activeRouteId: nextActiveId });
-		saveRoutes({ routes: nextRoutes, activeRouteId: nextActiveId });
+		window.dispatchEvent(new CustomEvent('swm:route-deleted', { detail: { routeId: routeId, activeRouteId: nextActiveId } }));
+		saveRoutes({ routes: nextRoutes, activeRouteId: nextActiveId }, routeId);
 	}
 	function mountButtons() {
 		var panel = byId('swm-multi-route-panel');
