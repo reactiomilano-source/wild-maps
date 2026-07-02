@@ -14,6 +14,14 @@ class Route_Collection {
 	public static function default_route( $route = null, $waypoints = [] ) {
 		return [ 'id' => self::DEFAULT_ROUTE_ID, 'name' => 'Main route', 'visible' => true, 'locked' => false, 'style' => [ 'color' => '#e63b2e', 'width' => 4, 'opacity' => 0.95 ], 'geojson' => is_array( $route ) ? $route : null, 'waypoints' => is_array( $waypoints ) ? array_values( $waypoints ) : [] ];
 	}
+	private static function is_empty_default_route( $route ) {
+		if ( ! is_array( $route ) ) { return false; }
+		$id = isset( $route['id'] ) ? (string) $route['id'] : '';
+		$name = isset( $route['name'] ) ? (string) $route['name'] : '';
+		$geojson = $route['geojson'] ?? null;
+		$waypoints = isset( $route['waypoints'] ) && is_array( $route['waypoints'] ) ? $route['waypoints'] : [];
+		return self::DEFAULT_ROUTE_ID === $id && ( '' === $name || 'Main route' === $name ) && ! is_array( $geojson ) && empty( $waypoints );
+	}
 	public static function normalize_route( $route, $index = 0 ) {
 		if ( ! is_array( $route ) ) { return null; }
 		$id = isset( $route['id'] ) && '' !== trim( (string) $route['id'] ) ? sanitize_key( $route['id'] ) : 'route-' . ( $index + 1 );
@@ -25,7 +33,11 @@ class Route_Collection {
 	}
 	public static function normalize_routes( $routes ) {
 		$out = [];
-		foreach ( (array) $routes as $index => $route ) { $normalized = self::normalize_route( $route, (int) $index ); if ( $normalized ) { $out[] = $normalized; } }
+		foreach ( (array) $routes as $index => $route ) {
+			if ( self::is_empty_default_route( $route ) ) { continue; }
+			$normalized = self::normalize_route( $route, (int) $index );
+			if ( $normalized ) { $out[] = $normalized; }
+		}
 		return $out;
 	}
 	public static function get_project_routes( $project_id ) {
