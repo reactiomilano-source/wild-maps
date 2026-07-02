@@ -16,9 +16,7 @@
 		window.__swmActiveRouteStopsPatched = true;
 		EventTarget.prototype.addEventListener = function (type, listener, options) {
 			try {
-				if (type === 'click' && this && this.id && BLOCKED_CLICK_IDS[this.id] && !listener.__swmActiveRouteStops) {
-					return;
-				}
+				if (type === 'click' && this && this.id && BLOCKED_CLICK_IDS[this.id] && !listener.__swmActiveRouteStops) return;
 			} catch (e) {}
 			return originalAddEventListener.call(this, type, listener, options);
 		};
@@ -30,21 +28,16 @@
 	function currentProjectId() { var el = byId('swm-current-project'); return el ? el.value : ''; }
 	function emptyFc() { return { type: 'FeatureCollection', features: [] }; }
 	function esc(text) { return String(text || '').replace(/[&<>"']/g, function (m) { return ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#039;' })[m]; }); }
+	function mark(fn) { fn.__swmActiveRouteStops = true; return fn; }
 	function post(action, data) {
 		var body = new URLSearchParams(Object.assign({ action: action, nonce: window.SWM_ADMIN ? window.SWM_ADMIN.nonce : '' }, data || {}));
-		return fetch(window.SWM_ADMIN.ajaxUrl, {
-			method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' }, body: body.toString()
-		}).then(function (r) { return r.json(); }).then(function (json) {
+		return fetch(window.SWM_ADMIN.ajaxUrl, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' }, body: body.toString() }).then(function (r) { return r.json(); }).then(function (json) {
 			if (!json || !json.success) throw new Error((json && json.data && json.data.message) || 'Route error.');
 			return json.data;
 		});
 	}
 	function state() { var s = store(); return s && s.getState ? s.getState() : { routes: [], activeRouteId: '' }; }
-	function activeRoute() {
-		var st = state();
-		return (st.routes || []).find(function (route) { return route.id === st.activeRouteId; }) || null;
-	}
-	function activeRouteId() { var r = activeRoute(); return r ? r.id : ''; }
+	function activeRoute() { var st = state(); return (st.routes || []).find(function (route) { return route.id === st.activeRouteId; }) || null; }
 	function updateActiveRoute(patch) {
 		var s = store();
 		if (!s || !s.getState || !s.load) return false;
@@ -72,43 +65,53 @@
 			return data;
 		}).catch(function (e) { status(e.message, 'error'); throw e; });
 	}
-	function routeCoords(route) {
-		if (!route || !route.geojson) return [];
-		var out = [];
-		function scan(g) {
-			if (!g) return;
-			if (g.type === 'LineString' && Array.isArray(g.coordinates)) g.coordinates.forEach(function (c) { out.push(c); });
-			else if (g.type === 'MultiLineString' && Array.isArray(g.coordinates)) g.coordinates.forEach(function (line) { (line || []).forEach(function (c) { out.push(c); }); });
-			else if (g.type === 'GeometryCollection' && Array.isArray(g.geometries)) g.geometries.forEach(scan);
-		}
-		if (route.geojson.type === 'FeatureCollection') (route.geojson.features || []).forEach(function (f) { scan(f.geometry); });
-		else if (route.geojson.type === 'Feature') scan(route.geojson.geometry);
-		else scan(route.geojson);
-		return out;
-	}
 	function ensureLegacyLayers(map) {
 		if (!map || !map.isStyleLoaded || !map.isStyleLoaded()) return false;
 		if (!map.getSource('swm-admin-route')) map.addSource('swm-admin-route', { type: 'geojson', data: emptyFc() });
-		if (!map.getLayer('swm-admin-route-line')) map.addLayer({ id:'swm-admin-route-line', type:'line', source:'swm-admin-route', layout:{ 'line-join':'round', 'line-cap':'round' }, paint:{ 'line-color':'#e63b2e', 'line-width':4, 'line-opacity':0.95 } });
+		if (!map.getLayer('swm-admin-route-line')) map.addLayer({ id:'swm-admin-route-line', type:'line', source:'swm-admin-route', layout:{ 'line-join':'round', 'line-cap':'round' }, paint:{ 'line-color':['coalesce',['get','color'],'#e63b2e'], 'line-width':['coalesce',['get','width'],4], 'line-opacity':['coalesce',['get','opacity'],0.95] } });
 		if (!map.getSource('swm-admin-route-waypoints')) map.addSource('swm-admin-route-waypoints', { type:'geojson', data: emptyFc() });
 		if (!map.getLayer('swm-admin-route-waypoint-circles')) map.addLayer({ id:'swm-admin-route-waypoint-circles', type:'circle', source:'swm-admin-route-waypoints', paint:{ 'circle-radius':12, 'circle-color':'#111', 'circle-stroke-color':'#fff', 'circle-stroke-width':2 } });
 		if (!map.getLayer('swm-admin-route-waypoint-labels')) map.addLayer({ id:'swm-admin-route-waypoint-labels', type:'symbol', source:'swm-admin-route-waypoints', layout:{ 'text-field':['get','label'], 'text-size':12, 'text-allow-overlap':true }, paint:{ 'text-color':'#fff' } });
 		return true;
 	}
+	function routeStyle(route) {
+		var style = route && route.style ? route.style : {};
+		return { color: style.color || '#e63b2e', width: Number(style.width || 4), opacity: Number(style.opacity == null ? 0.95 : style.opacity) };
+	}
+	function addRouteGeometry(features, route) {
+		var style = routeStyle(route);
+		function pushGeometry(geometry) {
+			if (!geometry || (geometry.type !== 'LineString' && geometry.type !== 'MultiLineString')) return;
+			features.push({ type:'Feature', properties:{ route_id: route.id || '', name: route.name || route.id || 'Route', color: style.color, width: style.width, opacity: style.opacity }, geometry: geometry });
+		}
+		if (route.geojson) {
+			if (route.geojson.type === 'FeatureCollection') (route.geojson.features || []).forEach(function (feature) { pushGeometry(feature && feature.geometry); });
+			else if (route.geojson.type === 'Feature') pushGeometry(route.geojson.geometry);
+			else pushGeometry(route.geojson);
+		} else if (Array.isArray(route.waypoints) && route.waypoints.length > 1) {
+			pushGeometry({ type:'LineString', coordinates: route.waypoints.map(function (wp) { return [Number(wp[0]), Number(wp[1])]; }) });
+		}
+	}
+	function allVisibleRouteData() {
+		var lines = [];
+		var points = [];
+		(state().routes || []).forEach(function (route) {
+			if (!route || route.visible === false) return;
+			addRouteGeometry(lines, route);
+			(route.waypoints || []).forEach(function (wp, i) {
+				points.push({ type:'Feature', properties:{ route_id: route.id || '', label:String(i + 1), index:i }, geometry:{ type:'Point', coordinates:[Number(wp[0]), Number(wp[1])] } });
+			});
+		});
+		return { lines:{ type:'FeatureCollection', features:lines }, points:{ type:'FeatureCollection', features:points } };
+	}
 	function render() {
 		var map = window.WildMapsAdminMap;
 		if (!map || !ensureLegacyLayers(map)) return;
+		var data = allVisibleRouteData();
+		map.getSource('swm-admin-route').setData(data.lines);
+		map.getSource('swm-admin-route-waypoints').setData(data.points);
 		var route = activeRoute();
-		if (!route || route.visible === false) {
-			map.getSource('swm-admin-route').setData(emptyFc());
-			map.getSource('swm-admin-route-waypoints').setData(emptyFc());
-			renderList([]);
-			return;
-		}
-		var line = route.geojson || (Array.isArray(route.waypoints) && route.waypoints.length > 1 ? { type:'Feature', properties:{}, geometry:{ type:'LineString', coordinates: route.waypoints.map(function (wp) { return [Number(wp[0]), Number(wp[1])]; }) } } : emptyFc());
-		map.getSource('swm-admin-route').setData(line);
-		map.getSource('swm-admin-route-waypoints').setData({ type:'FeatureCollection', features:(route.waypoints || []).map(function (wp, i) { return { type:'Feature', properties:{ label:String(i + 1), index:i }, geometry:{ type:'Point', coordinates:[Number(wp[0]), Number(wp[1])] } }; }) });
-		renderList(route.waypoints || []);
+		renderList(route && route.visible !== false ? (route.waypoints || []) : []);
 	}
 	function renderList(waypoints) {
 		var list = byId('swm-route-waypoints-list');
@@ -122,17 +125,12 @@
 			var index = Number(row.getAttribute('data-index'));
 			var input = row.querySelector('.swm-route-name');
 			if (input) input.addEventListener('change', mark(function () { var route = activeRoute(); if (!route) return; var wp = (route.waypoints || []).slice(); if (wp[index]) wp[index] = [wp[index][0], wp[index][1], input.value]; updateActiveRoute({ waypoints: wp }); render(); }));
-			var remove = row.querySelector('.swm-route-remove');
-			if (remove) remove.addEventListener('click', mark(function () { removeStop(index); }));
-			var up = row.querySelector('.swm-route-up');
-			if (up) up.addEventListener('click', mark(function () { moveStop(index, index - 1); }));
-			var down = row.querySelector('.swm-route-down');
-			if (down) down.addEventListener('click', mark(function () { moveStop(index, index + 1); }));
-			var zoom = row.querySelector('.swm-route-zoom');
-			if (zoom) zoom.addEventListener('click', mark(function () { var wp = (activeRoute() && activeRoute().waypoints || [])[index]; var map = window.WildMapsAdminMap; if (wp && map) map.flyTo({ center:[Number(wp[0]), Number(wp[1])], zoom:12, duration:400 }); }));
+			var remove = row.querySelector('.swm-route-remove'); if (remove) remove.addEventListener('click', mark(function () { removeStop(index); }));
+			var up = row.querySelector('.swm-route-up'); if (up) up.addEventListener('click', mark(function () { moveStop(index, index - 1); }));
+			var down = row.querySelector('.swm-route-down'); if (down) down.addEventListener('click', mark(function () { moveStop(index, index + 1); }));
+			var zoom = row.querySelector('.swm-route-zoom'); if (zoom) zoom.addEventListener('click', mark(function () { var wp = (activeRoute() && activeRoute().waypoints || [])[index]; var map = window.WildMapsAdminMap; if (wp && map) map.flyTo({ center:[Number(wp[0]), Number(wp[1])], zoom:12, duration:400 }); }));
 		});
 	}
-	function mark(fn) { fn.__swmActiveRouteStops = true; return fn; }
 	var routeMode = false;
 	function setRouteMode(on) {
 		routeMode = !!on;
@@ -145,26 +143,12 @@
 		var route = activeRoute();
 		if (!route) { status('Create or select a route first.', 'error'); return; }
 		var wp = (route.waypoints || []).slice();
-		wp.push([Number(lng.toFixed ? lng.toFixed(6) : Number(lng).toFixed(6)), Number(lat.toFixed ? lat.toFixed(6) : Number(lat).toFixed(6)), name || ('Stop ' + (wp.length + 1))]);
+		wp.push([Number(Number(lng).toFixed(6)), Number(Number(lat).toFixed(6)), name || ('Stop ' + (wp.length + 1))]);
 		updateActiveRoute({ waypoints: wp, geojson: null });
 		render();
 	}
-	function removeStop(index) {
-		var route = activeRoute(); if (!route) return;
-		var wp = (route.waypoints || []).slice();
-		if (index < 0 || index >= wp.length) return;
-		wp.splice(index, 1);
-		updateActiveRoute({ waypoints: wp, geojson: null });
-		render();
-	}
-	function moveStop(from, to) {
-		var route = activeRoute(); if (!route) return;
-		var wp = (route.waypoints || []).slice();
-		if (from < 0 || from >= wp.length || to < 0 || to >= wp.length) return;
-		var item = wp.splice(from, 1)[0]; wp.splice(to, 0, item);
-		updateActiveRoute({ waypoints: wp, geojson: null });
-		render();
-	}
+	function removeStop(index) { var route = activeRoute(); if (!route) return; var wp = (route.waypoints || []).slice(); if (index < 0 || index >= wp.length) return; wp.splice(index, 1); updateActiveRoute({ waypoints: wp, geojson: null }); render(); }
+	function moveStop(from, to) { var route = activeRoute(); if (!route) return; var wp = (route.waypoints || []).slice(); if (from < 0 || from >= wp.length || to < 0 || to >= wp.length) return; var item = wp.splice(from, 1)[0]; wp.splice(to, 0, item); updateActiveRoute({ waypoints: wp, geojson: null }); render(); }
 	function calculateRoute() {
 		var route = activeRoute();
 		if (!route || !Array.isArray(route.waypoints) || route.waypoints.length < 2) { status('At least 2 stops are required.', 'error'); return; }
@@ -176,12 +160,7 @@
 			status('Percorso su strada calcolato. Ora puoi salvarlo nel progetto.', 'success');
 		}).catch(function (e) { status(e.message, 'error'); });
 	}
-	function clearActiveRoute() {
-		var route = activeRoute(); if (!route) return;
-		updateActiveRoute({ geojson: null, waypoints: [] });
-		render();
-		saveCollection('Route and stops cleared.').catch(function () {});
-	}
+	function clearActiveRoute() { var route = activeRoute(); if (!route) return; updateActiveRoute({ geojson: null, waypoints: [] }); render(); saveCollection('Route and stops cleared.').catch(function () {}); }
 	function bindButtons() {
 		var mode = byId('swm-route-mode'); if (mode && !mode.__swmActiveRouteStops) { mode.__swmActiveRouteStops = true; mode.addEventListener('click', mark(function (e) { e.preventDefault(); setRouteMode(!routeMode); })); }
 		var calc = byId('swm-route-calc'); if (calc && !calc.__swmActiveRouteStops) { calc.__swmActiveRouteStops = true; calc.addEventListener('click', mark(function (e) { e.preventDefault(); calculateRoute(); })); }
