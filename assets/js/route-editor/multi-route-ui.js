@@ -13,20 +13,20 @@
 	}
 	function currentProjectId() { var el = byId('swm-current-project'); return el ? el.value : ''; }
 	function store() { return window.WildMapsRouteEditorStore || null; }
-	function defaultRoutes() { return [{ id: 'route-main', name: 'Main route', visible: true, locked: false, style: { color: '#e63b2e', width: 4, opacity: 0.95 }, geojson: null, waypoints: [] }]; }
 	function ensureStore() {
 		var s = store();
 		if (!s && window.WildMapsRouteStore) {
-			s = new window.WildMapsRouteStore({ routes: defaultRoutes(), activeRouteId: 'route-main' });
+			s = new window.WildMapsRouteStore({ routes: [], activeRouteId: '' });
 			window.WildMapsRouteEditorStore = s;
 		}
 		return s;
 	}
 	function getState() {
 		var s = ensureStore();
-		if (!s || !s.getState) return { activeRouteId: 'route-main', routes: defaultRoutes() };
+		if (!s || !s.getState) return { activeRouteId: '', routes: [] };
 		var state = s.getState();
-		if (!state.routes || !state.routes.length) state.routes = defaultRoutes();
+		state.routes = Array.isArray(state.routes) ? state.routes : [];
+		state.activeRouteId = state.activeRouteId || (state.routes[0] && state.routes[0].id) || '';
 		return state;
 	}
 	function post(action, data) {
@@ -40,7 +40,7 @@
 		if (!currentProjectId()) return Promise.resolve(false);
 		return post('swm_admin_get_routes', { project_id: currentProjectId() }).then(function (data) {
 			var s = ensureStore();
-			if (s && s.load) s.load({ routes: data.routes || defaultRoutes(), activeRouteId: data.active_route_id || 'route-main' });
+			if (s && s.load) s.load({ routes: data.routes || [], activeRouteId: data.active_route_id || '' });
 			render();
 			return true;
 		}).catch(function () { return false; });
@@ -48,9 +48,9 @@
 	function saveRoutes(message) {
 		if (!currentProjectId()) return Promise.resolve(false);
 		var state = getState();
-		return post('swm_admin_save_routes', { project_id: currentProjectId(), active_route_id: state.activeRouteId || 'route-main', routes: JSON.stringify(state.routes || []) }).then(function (data) {
+		return post('swm_admin_save_routes', { project_id: currentProjectId(), active_route_id: state.activeRouteId || '', routes: JSON.stringify(state.routes || []) }).then(function (data) {
 			var s = ensureStore();
-			if (s && s.load) s.load({ routes: data.routes || state.routes, activeRouteId: data.active_route_id || state.activeRouteId });
+			if (s && s.load) s.load({ routes: data.routes || state.routes || [], activeRouteId: data.active_route_id || state.activeRouteId || '' });
 			render();
 			if (message) status(message, 'success');
 			return true;
@@ -58,21 +58,21 @@
 	}
 	function activeRoute() {
 		var state = getState();
-		return state.routes.find(function (route) { return route.id === state.activeRouteId; }) || state.routes[0];
+		return state.routes.find(function (route) { return route.id === state.activeRouteId; }) || state.routes[0] || null;
 	}
 	function activeRouteName() {
 		var active = activeRoute();
-		return active ? active.name : 'Main route';
+		return active ? active.name : 'No active route';
 	}
 	function render() {
 		var panel = byId('swm-multi-route-panel');
 		if (!panel) return;
 		var state = getState();
-		panel.querySelector('.swm-multi-route-list').innerHTML = state.routes.map(function (route) {
+		panel.querySelector('.swm-multi-route-list').innerHTML = state.routes.length ? state.routes.map(function (route) {
 			var active = route.id === state.activeRouteId;
 			var visible = route.visible !== false;
 			return '<span class="swm-route-layer-row" style="display:inline-flex;gap:4px;align-items:center;margin:0 6px 6px 0;opacity:' + (visible ? '1' : '.45') + '"><button type="button" class="button" data-route-visibility-id="' + esc(route.id) + '" title="Toggle visibility">' + (visible ? '👁' : '🚫') + '</button><button type="button" class="button ' + (active ? 'button-primary' : '') + '" data-route-id="' + esc(route.id) + '">' + esc(route.name || route.id) + '</button></span>';
-		}).join('');
+		}).join('') : '<p class="description">No routes yet. Create a route or import a GPX.</p>';
 		var activeLabel = panel.querySelector('.swm-multi-route-active');
 		if (activeLabel) activeLabel.textContent = activeRouteName();
 	}
@@ -196,9 +196,7 @@
 		a.remove();
 		window.setTimeout(function () { URL.revokeObjectURL(url); }, 500);
 	}
-	function downloadText(filename, content) {
-		downloadBlob(filename, new Blob([content], { type: 'application/gpx+xml;charset=utf-8' }));
-	}
+	function downloadText(filename, content) { downloadBlob(filename, new Blob([content], { type: 'application/gpx+xml;charset=utf-8' })); }
 	function exportActiveGpx() {
 		try {
 			var route = activeRoute();
@@ -281,7 +279,7 @@
 		var panel = document.createElement('div');
 		panel.id = 'swm-multi-route-panel';
 		panel.className = 'swm-admin-route-card swm-multi-route-panel';
-		panel.innerHTML = '<h2>Routes</h2><p class="description">Active route: <strong class="swm-multi-route-active">Main route</strong></p><div class="swm-multi-route-list"></div><p><button type="button" class="button button-primary" id="swm-route-create">+ New route</button> <button type="button" class="button" id="swm-route-rename">Rename active</button> <button type="button" class="button" id="swm-route-export-gpx">Export active GPX</button> <button type="button" class="button" id="swm-route-export-all-gpx">Export all GPX ZIP</button> <button type="button" class="button" id="swm-route-export-multitrack-gpx">Export MultiTrack GPX</button></p><p class="description">Route collection is saved in this project. Use the eye buttons to show or hide route layers.</p>';
+		panel.innerHTML = '<h2>Routes</h2><p class="description">Active route: <strong class="swm-multi-route-active">No active route</strong></p><div class="swm-multi-route-list"></div><p><button type="button" class="button button-primary" id="swm-route-create">+ New route</button> <button type="button" class="button" id="swm-route-rename">Rename active</button> <button type="button" class="button" id="swm-route-export-gpx">Export active GPX</button> <button type="button" class="button" id="swm-route-export-all-gpx">Export all GPX ZIP</button> <button type="button" class="button" id="swm-route-export-multitrack-gpx">Export MultiTrack GPX</button></p><p class="description">Route collection is saved in this project. Use the eye buttons to show or hide route layers.</p>';
 		routeCard.parentNode.insertBefore(panel, routeCard);
 		panel.addEventListener('click', function (event) {
 			var target = event.target;
