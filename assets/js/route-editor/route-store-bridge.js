@@ -3,7 +3,7 @@
 
 	if (!window.WildMapsRouteStore) return;
 
-	var store = new window.WildMapsRouteStore({ route: null, waypoints: [] });
+	var store = new window.WildMapsRouteStore({ routes: [], activeRouteId: '' });
 	window.WildMapsRouteEditorStore = store;
 
 	function parseBody(init) {
@@ -20,12 +20,19 @@
 		try { return JSON.parse(value); } catch (e) { return fallback; }
 	}
 
+	function hasLegacyPayload(payload) {
+		return payload && (payload.route || (Array.isArray(payload.waypoints) && payload.waypoints.length));
+	}
+
 	function syncFromPayload(payload, source) {
 		if (!payload || typeof payload !== 'object') return;
-		store.load({
-			route: payload.route || null,
-			waypoints: Array.isArray(payload.waypoints) ? payload.waypoints : []
-		});
+		if (Array.isArray(payload.routes)) {
+			store.load({ routes: payload.routes, activeRouteId: payload.active_route_id || payload.activeRouteId || '' });
+		} else if (hasLegacyPayload(payload)) {
+			store.load({ route: payload.route || null, waypoints: Array.isArray(payload.waypoints) ? payload.waypoints : [] });
+		} else {
+			store.load({ routes: [], activeRouteId: '' });
+		}
 		store.emit('legacy:sync', { source: source || 'unknown' });
 	}
 
@@ -33,10 +40,8 @@
 		if (!params) return;
 		var waypoints = parseJson(params.get('waypoints'), []);
 		var route = parseJson(params.get('route'), null);
-		store.load({
-			route: route,
-			waypoints: Array.isArray(waypoints) ? waypoints : []
-		});
+		if (!route && !waypoints.length) return;
+		store.load({ route: route, waypoints: Array.isArray(waypoints) ? waypoints : [] });
 		store.emit('legacy:request-sync', { source: source || 'unknown' });
 	}
 
@@ -49,6 +54,8 @@
 		var shouldWatch = action && (
 			action === 'swm_admin_get_route' ||
 			action === 'swm_admin_save_route' ||
+			action === 'swm_admin_get_routes' ||
+			action === 'swm_admin_save_routes' ||
 			action === 'swm_admin_ors_route'
 		);
 
@@ -60,10 +67,11 @@
 			if (!shouldWatch || !response || !response.clone) return response;
 			response.clone().json().then(function (json) {
 				if (!json || !json.success || !json.data) return;
-				if (action === 'swm_admin_get_route' || action === 'swm_admin_save_route') {
+				if (action === 'swm_admin_get_route' || action === 'swm_admin_save_route' || action === 'swm_admin_get_routes' || action === 'swm_admin_save_routes') {
 					syncFromPayload(json.data, action);
 				} else if (action === 'swm_admin_ors_route' && json.data.route) {
-					store.setRouteGeojson('route-main', json.data.route);
+					var active = store.getActiveRoute && store.getActiveRoute();
+					if (active) store.setRouteGeojson(active.id, json.data.route);
 				}
 			}).catch(function () {});
 			return response;
