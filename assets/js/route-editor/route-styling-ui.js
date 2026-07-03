@@ -107,7 +107,11 @@
 	function boot() {
 		mount();
 		var s = store();
-		if (s && s.on) s.on('change', function (event) { if (!event || !event.type || event.type !== 'route:loaded') render(); });
+		if (s && s.on && !s.__swmRouteStyleRenderBound) {
+			s.__swmRouteStyleRenderBound = true;
+			s.on('change', function () { render(); });
+		}
+		window.addEventListener('wildmaps:routes-hydrated', render);
 		if (!byId('swm-route-style-panel')) window.setTimeout(boot, 300);
 	}
 	if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
