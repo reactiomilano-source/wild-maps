@@ -64,8 +64,12 @@
 	function collectionFromState(state) {
 		var lines = [];
 		var points = [];
+		if (!state || !state.activeRouteId) {
+			return { lines: { type: 'FeatureCollection', features: lines }, points: { type: 'FeatureCollection', features: points } };
+		}
 		(state.routes || []).forEach(function (route) {
 			if (!route || route.visible === false) return;
+			if (route.id !== state.activeRouteId) return;
 			lines = lines.concat(routeFeatures(route));
 			points = points.concat(waypointFeatures(route));
 		});
