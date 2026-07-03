@@ -15,6 +15,27 @@
 		return null;
 	}
 
+	function activeRouteCoordinates() {
+		var active = store.getActiveRoute && store.getActiveRoute();
+		if (!active || !Array.isArray(active.waypoints) || active.waypoints.length < 2) return null;
+		return active.waypoints.map(function (wp) {
+			return [Number(wp[0]), Number(wp[1])];
+		}).filter(function (coord) {
+			return isFinite(coord[0]) && isFinite(coord[1]);
+		});
+	}
+
+	function rewriteOrsRequest(init) {
+		if (!init) return init;
+		var params = parseBody(init);
+		if (!params || params.get('action') !== 'swm_admin_ors_route') return init;
+		var coords = activeRouteCoordinates();
+		if (!coords || coords.length < 2) return init;
+		params.set('coordinates', JSON.stringify(coords));
+		var next = Object.assign({}, init, { body: params.toString() });
+		return next;
+	}
+
 	function syncFromPayload(payload, source) {
 		if (!payload || typeof payload !== 'object') return;
 		if (Array.isArray(payload.routes)) {
@@ -28,7 +49,8 @@
 	if (!originalFetch || originalFetch.__swmRouteStoreBridge) return;
 
 	function bridgedFetch(input, init) {
-		var params = parseBody(init);
+		var patchedInit = rewriteOrsRequest(init);
+		var params = parseBody(patchedInit);
 		var action = params ? params.get('action') : '';
 		var shouldWatch = action && (
 			action === 'swm_admin_get_routes' ||
@@ -36,7 +58,7 @@
 			action === 'swm_admin_ors_route'
 		);
 
-		return originalFetch.apply(this, arguments).then(function (response) {
+		return originalFetch.call(this, input, patchedInit).then(function (response) {
 			if (!shouldWatch || !response || !response.clone) return response;
 			response.clone().json().then(function (json) {
 				if (!json || !json.success || !json.data) return;
