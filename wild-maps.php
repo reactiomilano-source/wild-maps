@@ -2,14 +2,14 @@
 /**
  * Plugin Name: Wild Maps
  * Description: Elementor widget with MapLibre + MapTiler for Wild Maps.
- * Version: 1.3.0-beta.5
+ * Version: 1.3.0-beta.6
  * Author: Stay Wild
  * Text Domain: wild-maps
  */
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
-define( 'SWM_VERSION', '1.3.0-beta.5' );
+define( 'SWM_VERSION', '1.3.0-beta.6' );
 define( 'SWM_PATH', plugin_dir_path( __FILE__ ) );
 define( 'SWM_URL', plugin_dir_url( __FILE__ ) );
 define( 'SWM_WMAP_FORMAT_VERSION', '1.3' );
@@ -37,7 +37,8 @@ add_action( 'admin_enqueue_scripts', function( $hook ) {
 	wp_enqueue_script( 'swm-route-map-capture', SWM_URL . 'assets/js/route-editor/route-map-capture.js', [], SWM_VERSION, true );
 	wp_enqueue_script( 'swm-route-store', SWM_URL . 'assets/js/route-editor/route-store.js', [], SWM_VERSION, true );
 	wp_enqueue_script( 'swm-route-store-bridge', SWM_URL . 'assets/js/route-editor/route-store-bridge.js', [ 'swm-route-store' ], SWM_VERSION, true );
-	wp_enqueue_script( 'swm-active-route-stops-controller', SWM_URL . 'assets/js/route-editor/active-route-stops-controller.js', [ 'swm-route-map-capture', 'swm-route-store', 'swm-route-store-bridge' ], SWM_VERSION, true );
+	wp_enqueue_script( 'swm-route-load-init-clean', SWM_URL . 'assets/js/route-editor/route-load-init-clean.js', [ 'swm-route-store-bridge' ], SWM_VERSION, true );
+	wp_enqueue_script( 'swm-active-route-stops-controller', SWM_URL . 'assets/js/route-editor/active-route-stops-controller.js', [ 'swm-route-map-capture', 'swm-route-store', 'swm-route-store-bridge', 'swm-route-load-init-clean' ], SWM_VERSION, true );
 	wp_enqueue_script( 'swm-version-badge', SWM_URL . 'assets/js/admin-version-badge.js', [], SWM_VERSION, true );
 }, 9 );
 
@@ -47,10 +48,10 @@ add_action( 'admin_enqueue_scripts', function( $hook ) {
 	if ( ! $is_swm_screen ) { return; }
 	wp_enqueue_script( 'swm-route-actions', SWM_URL . 'assets/js/route-editor/route-actions.js', [ 'swm-admin', 'swm-route-store', 'swm-route-store-bridge' ], SWM_VERSION, true );
 	wp_enqueue_script( 'swm-route-drag-store', SWM_URL . 'assets/js/route-editor/route-drag-store.js', [ 'swm-admin', 'swm-route-store', 'swm-route-store-bridge', 'swm-route-actions' ], SWM_VERSION, true );
-	wp_enqueue_script( 'swm-multi-route-ui', SWM_URL . 'assets/js/route-editor/multi-route-ui.js', [ 'swm-admin', 'swm-route-store', 'swm-route-store-bridge' ], SWM_VERSION, true );
+	wp_enqueue_script( 'swm-multi-route-ui', SWM_URL . 'assets/js/route-editor/multi-route-ui.js', [ 'swm-admin', 'swm-route-store', 'swm-route-store-bridge', 'swm-route-load-init-clean' ], SWM_VERSION, true );
 	wp_enqueue_script( 'swm-delete-route-ui', SWM_URL . 'assets/js/route-editor/delete-route-ui.js', [ 'swm-multi-route-ui' ], SWM_VERSION, true );
 	wp_enqueue_script( 'swm-route-styling-ui', SWM_URL . 'assets/js/route-editor/route-styling-ui.js', [ 'swm-admin', 'swm-route-store', 'swm-multi-route-ui' ], SWM_VERSION, true );
-	wp_enqueue_script( 'swm-route-layer-renderer', SWM_URL . 'assets/js/route-editor/route-layer-renderer.js', [ 'swm-admin', 'swm-route-store', 'swm-multi-route-ui', 'swm-route-styling-ui' ], SWM_VERSION, true );
+	wp_enqueue_script( 'swm-route-layer-renderer', SWM_URL . 'assets/js/route-editor/route-layer-renderer.js', [ 'swm-admin', 'swm-route-store', 'swm-multi-route-ui', 'swm-route-styling-ui', 'swm-route-load-init-clean' ], SWM_VERSION, true );
 	wp_enqueue_script( 'swm-layout-composer', SWM_URL . 'assets/js/route-editor/layout-composer.js', [ 'swm-admin', 'swm-route-store', 'swm-multi-route-ui' ], SWM_VERSION, true );
 }, 11 );
 
