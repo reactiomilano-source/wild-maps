@@ -19,10 +19,21 @@
 		return null;
 	}
 
+	function activateHydratedRoute(payload) {
+		if (!payload || !Array.isArray(payload.routes) || !payload.routes.length || !store || !store.setActiveRoute) return;
+		var activeId = payload.active_route_id || payload.activeRouteId || (payload.routes[0] && payload.routes[0].id) || '';
+		if (!activeId) return;
+		window.setTimeout(function () {
+			store.setActiveRoute(activeId);
+			window.dispatchEvent(new CustomEvent('wildmaps:route-hydrated', { detail: { routeId: activeId } }));
+		}, 0);
+	}
+
 	function syncFromPayload(payload, source) {
 		if (!payload || typeof payload !== 'object') return;
 		if (Array.isArray(payload.routes)) {
 			store.load({ routes: payload.routes, activeRouteId: payload.active_route_id || payload.activeRouteId || '' });
+			activateHydratedRoute(payload);
 		} else if (source === 'swm_admin_get_routes' || source === 'swm_admin_save_routes') {
 			store.load({ routes: [], activeRouteId: '' });
 		}
