@@ -2,7 +2,6 @@
 	'use strict';
 
 	var BLOCKED_CLICK_IDS = {
-		'swm-route-mode': true,
 		'swm-route-calc': true,
 		'swm-route-save': true,
 		'swm-route-undo': true,
@@ -134,6 +133,7 @@
 	var routeMode = false;
 	function setRouteMode(on) {
 		routeMode = !!on;
+		window.SWM_ROUTE_MODE_ACTIVE = routeMode;
 		var btn = byId('swm-route-mode');
 		if (btn) { btn.textContent = 'Route mode: ' + (routeMode ? 'ON' : 'OFF'); btn.classList.toggle('button-primary', routeMode); }
 		status(routeMode ? 'Click the map to add stops to the active route.' : 'Route mode OFF.', 'info');
@@ -177,7 +177,7 @@
 			if (!routeMode) return;
 			var defaultName = 'Stop ' + (((activeRoute() && activeRoute().waypoints) || []).length + 1);
 			var name = window.prompt('Stop name', defaultName);
-			if (name === null) name = defaultName;
+			if (name === null) return;
 			addStop(event.lngLat.lng, event.lngLat.lat, String(name || defaultName).trim());
 		});
 		map.on('load', render); map.on('styledata', render); render();
