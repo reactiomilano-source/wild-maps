@@ -10,6 +10,8 @@
 		'swm-route-save-list': true,
 		'swm-route-clear': true
 	};
+	var activeStopMarkers = [];
+	window.SWM_ROUTE_MODE_ACTIVE = !!window.SWM_ROUTE_MODE_ACTIVE;
 
 	var originalAddEventListener = EventTarget.prototype.addEventListener;
 	if (!window.__swmActiveRouteStopsPatched) {
@@ -104,6 +106,41 @@
 		});
 		return { lines:{ type:'FeatureCollection', features:lines }, points:{ type:'FeatureCollection', features:points } };
 	}
+	function markerElement(index) {
+		var el = document.createElement('button');
+		el.type = 'button';
+		el.className = 'swm-admin-route-marker';
+		el.textContent = String(index + 1);
+		el.title = 'Stop ' + (index + 1) + ' - drag to move';
+		return el;
+	}
+	function clearActiveStopMarkers() {
+		activeStopMarkers.forEach(function (marker) { try { marker.remove(); } catch (e) {} });
+		activeStopMarkers = [];
+	}
+	function moveStop(index, lngLat) {
+		var route = activeRoute(); if (!route || !lngLat) return;
+		var wp = (route.waypoints || []).slice();
+		index = Number(index);
+		if (index < 0 || index >= wp.length) return;
+		wp[index] = [Number(Number(lngLat.lng).toFixed(6)), Number(Number(lngLat.lat).toFixed(6)), wp[index][2] || ('Stop ' + (index + 1))];
+		updateActiveRoute({ waypoints: wp, geojson: null });
+		status('Stop moved. Recalculate and save the route.', 'info');
+	}
+	function renderActiveStopMarkers() {
+		var map = window.WildMapsAdminMap;
+		var route = activeRoute();
+		clearActiveStopMarkers();
+		if (!map || !window.maplibregl || !route || route.visible === false) return;
+		(route.waypoints || []).forEach(function (wp, index) {
+			var lng = Number(wp[0]); var lat = Number(wp[1]);
+			if (!isFinite(lng) || !isFinite(lat)) return;
+			var marker = new window.maplibregl.Marker({ element: markerElement(index), draggable: true }).setLngLat([lng, lat]).addTo(map);
+			marker.getElement().addEventListener('click', function (event) { event.stopPropagation(); });
+			marker.on('dragend', function () { moveStop(index, marker.getLngLat()); });
+			activeStopMarkers.push(marker);
+		});
+	}
 	function render() {
 		var map = window.WildMapsAdminMap;
 		if (!map || !ensureLegacyLayers(map)) return;
@@ -112,6 +149,7 @@
 		map.getSource('swm-admin-route-waypoints').setData(data.points);
 		var route = activeRoute();
 		renderList(route && route.visible !== false ? (route.waypoints || []) : []);
+		renderActiveStopMarkers();
 	}
 	function renderList(waypoints) {
 		var list = byId('swm-route-waypoints-list');
@@ -125,70 +163,30 @@
 			var index = Number(row.getAttribute('data-index'));
 			var input = row.querySelector('.swm-route-name');
 			if (input) input.addEventListener('change', mark(function () { var route = activeRoute(); if (!route) return; var wp = (route.waypoints || []).slice(); if (wp[index]) wp[index] = [wp[index][0], wp[index][1], input.value]; updateActiveRoute({ waypoints: wp }); render(); }));
-			var remove = row.querySelector('.swm-route-remove'); if (remove) remove.addEventListener('click', mark(function () { removeStop(index); }));
-			var up = row.querySelector('.swm-route-up'); if (up) up.addEventListener('click', mark(function () { moveStop(index, index - 1); }));
-			var down = row.querySelector('.swm-route-down'); if (down) down.addEventListener('click', mark(function () { moveStop(index, index + 1); }));
+			var remove = row.querySelector('.swm-route-remove'); if (remove) remove.addEventListener('click', mark(function () { removeWaypoint(index); }));
+			var up = row.querySelector('.swm-route-up'); if (up) up.addEventListener('click', mark(function () { reorderWaypoint(index, index - 1); }));
+			var down = row.querySelector('.swm-route-down'); if (down) down.addEventListener('click', mark(function () { reorderWaypoint(index, index + 1); }));
 			var zoom = row.querySelector('.swm-route-zoom'); if (zoom) zoom.addEventListener('click', mark(function () { var wp = (activeRoute() && activeRoute().waypoints || [])[index]; var map = window.WildMapsAdminMap; if (wp && map) map.flyTo({ center:[Number(wp[0]), Number(wp[1])], zoom:12, duration:400 }); }));
 		});
 	}
+	function removeWaypoint(index) { var route = activeRoute(); if (!route) return; var wp = (route.waypoints || []).slice(); if (index < 0 || index >= wp.length) return; wp.splice(index, 1); updateActiveRoute({ waypoints: wp, geojson: null }); render(); }
+	function reorderWaypoint(from, to) { var route = activeRoute(); if (!route) return; var wp = (route.waypoints || []).slice(); if (from < 0 || from >= wp.length || to < 0 || to >= wp.length) return; var item = wp.splice(from, 1)[0]; wp.splice(to, 0, item); updateActiveRoute({ waypoints: wp, geojson: null }); render(); }
 	var routeMode = false;
-	function setRouteMode(on) {
-		routeMode = !!on;
-		var btn = byId('swm-route-mode');
-		if (btn) { btn.textContent = 'Route mode: ' + (routeMode ? 'ON' : 'OFF'); btn.classList.toggle('button-primary', routeMode); }
-		status(routeMode ? 'Click the map to add stops to the active route.' : 'Route mode OFF.', 'info');
-	}
-	function addStop(lng, lat, name) {
-		if (!currentProjectId()) { status('Select a project first.', 'error'); return; }
-		var route = activeRoute();
-		if (!route) { status('Create or select a route first.', 'error'); return; }
-		var wp = (route.waypoints || []).slice();
-		wp.push([Number(Number(lng).toFixed(6)), Number(Number(lat).toFixed(6)), name || ('Stop ' + (wp.length + 1))]);
-		updateActiveRoute({ waypoints: wp, geojson: null });
-		render();
-	}
-	function removeStop(index) { var route = activeRoute(); if (!route) return; var wp = (route.waypoints || []).slice(); if (index < 0 || index >= wp.length) return; wp.splice(index, 1); updateActiveRoute({ waypoints: wp, geojson: null }); render(); }
-	function moveStop(from, to) { var route = activeRoute(); if (!route) return; var wp = (route.waypoints || []).slice(); if (from < 0 || from >= wp.length || to < 0 || to >= wp.length) return; var item = wp.splice(from, 1)[0]; wp.splice(to, 0, item); updateActiveRoute({ waypoints: wp, geojson: null }); render(); }
-	function calculateRoute() {
-		var route = activeRoute();
-		if (!route || !Array.isArray(route.waypoints) || route.waypoints.length < 2) { status('At least 2 stops are required.', 'error'); return; }
-		var profile = byId('swm-route-profile');
-		status('Calcolo percorso OpenRouteService...', 'info');
-		post('swm_admin_ors_route', { profile: profile ? profile.value : 'driving-car', coordinates: JSON.stringify(route.waypoints.map(function (wp) { return [Number(wp[0]), Number(wp[1])]; })) }).then(function (data) {
-			updateActiveRoute({ geojson: data.route || null });
-			render();
-			status('Percorso su strada calcolato. Ora puoi salvarlo nel progetto.', 'success');
-		}).catch(function (e) { status(e.message, 'error'); });
-	}
+	function setRouteMode(on) { routeMode = !!on; window.SWM_ROUTE_MODE_ACTIVE = routeMode; var btn = byId('swm-route-mode'); if (btn) { btn.textContent = 'Route mode: ' + (routeMode ? 'ON' : 'OFF'); btn.classList.toggle('button-primary', routeMode); } status(routeMode ? 'Click the map to add stops to the active route.' : 'Route mode OFF.', 'info'); }
+	function addStop(lng, lat, name) { if (!currentProjectId()) { status('Select a project first.', 'error'); return; } var route = activeRoute(); if (!route) { status('Create or select a route first.', 'error'); return; } var wp = (route.waypoints || []).slice(); wp.push([Number(Number(lng).toFixed(6)), Number(Number(lat).toFixed(6)), name || ('Stop ' + (wp.length + 1))]); updateActiveRoute({ waypoints: wp, geojson: null }); render(); }
+	function calculateRoute() { var route = activeRoute(); if (!route || !Array.isArray(route.waypoints) || route.waypoints.length < 2) { status('At least 2 stops are required.', 'error'); return; } var profile = byId('swm-route-profile'); status('Calcolo percorso OpenRouteService...', 'info'); post('swm_admin_ors_route', { profile: profile ? profile.value : 'driving-car', coordinates: JSON.stringify(route.waypoints.map(function (wp) { return [Number(wp[0]), Number(wp[1])]; })) }).then(function (data) { updateActiveRoute({ geojson: data.route || null }); render(); status('Percorso su strada calcolato. Ora puoi salvarlo nel progetto.', 'success'); }).catch(function (e) { status(e.message, 'error'); }); }
 	function clearActiveRoute() { var route = activeRoute(); if (!route) return; updateActiveRoute({ geojson: null, waypoints: [] }); render(); saveCollection('Route and stops cleared.').catch(function () {}); }
 	function bindButtons() {
 		var mode = byId('swm-route-mode'); if (mode && !mode.__swmActiveRouteStops) { mode.__swmActiveRouteStops = true; mode.addEventListener('click', mark(function (e) { e.preventDefault(); setRouteMode(!routeMode); })); }
 		var calc = byId('swm-route-calc'); if (calc && !calc.__swmActiveRouteStops) { calc.__swmActiveRouteStops = true; calc.addEventListener('click', mark(function (e) { e.preventDefault(); calculateRoute(); })); }
 		var save = byId('swm-route-save'); if (save && !save.__swmActiveRouteStops) { save.__swmActiveRouteStops = true; save.addEventListener('click', mark(function (e) { e.preventDefault(); saveCollection(); })); }
 		var clear = byId('swm-route-clear'); if (clear && !clear.__swmActiveRouteStops) { clear.__swmActiveRouteStops = true; clear.addEventListener('click', mark(function (e) { e.preventDefault(); if (window.confirm('Clear current route and stops?')) clearActiveRoute(); })); }
-		var undo = byId('swm-route-undo'); if (undo && !undo.__swmActiveRouteStops) { undo.__swmActiveRouteStops = true; undo.addEventListener('click', mark(function (e) { e.preventDefault(); var route = activeRoute(); removeStop(((route && route.waypoints) || []).length - 1); })); }
+		var undo = byId('swm-route-undo'); if (undo && !undo.__swmActiveRouteStops) { undo.__swmActiveRouteStops = true; undo.addEventListener('click', mark(function (e) { e.preventDefault(); var route = activeRoute(); removeWaypoint(((route && route.waypoints) || []).length - 1); })); }
 		var reverse = byId('swm-route-reverse'); if (reverse && !reverse.__swmActiveRouteStops) { reverse.__swmActiveRouteStops = true; reverse.addEventListener('click', mark(function (e) { e.preventDefault(); var route = activeRoute(); if (!route) return; updateActiveRoute({ waypoints:(route.waypoints || []).slice().reverse(), geojson:null }); render(); })); }
 		var saveList = byId('swm-route-save-list'); if (saveList && !saveList.__swmActiveRouteStops) { saveList.__swmActiveRouteStops = true; saveList.addEventListener('click', mark(function (e) { e.preventDefault(); saveCollection('Elenco tappe salvato.'); })); }
 	}
-	function bindMap(map) {
-		if (!map || map.__swmActiveRouteStopsBound) return;
-		map.__swmActiveRouteStopsBound = true;
-		map.on('click', function (event) {
-			if (!routeMode) return;
-			var defaultName = 'Stop ' + (((activeRoute() && activeRoute().waypoints) || []).length + 1);
-			var name = window.prompt('Stop name', defaultName);
-			if (name === null) name = defaultName;
-			addStop(event.lngLat.lng, event.lngLat.lat, String(name || defaultName).trim());
-		});
-		map.on('load', render); map.on('styledata', render); render();
-	}
-	function boot() {
-		bindButtons();
-		if (window.WildMapsAdminMap) bindMap(window.WildMapsAdminMap);
-		var s = store();
-		if (s && s.on && !s.__swmActiveRouteStopsRenderBound) { s.__swmActiveRouteStopsRenderBound = true; s.on('change', render); }
-		window.setTimeout(boot, 500);
-	}
+	function bindMap(map) { if (!map || map.__swmActiveRouteStopsBound) return; map.__swmActiveRouteStopsBound = true; map.on('click', mark(function (event) { if (!routeMode) return; if (event && event.originalEvent) { event.originalEvent.preventDefault(); event.originalEvent.stopPropagation(); } var defaultName = 'Stop ' + (((activeRoute() && activeRoute().waypoints) || []).length + 1); var name = window.prompt('Stop name', defaultName); if (name === null) return; addStop(event.lngLat.lng, event.lngLat.lat, String(name || defaultName).trim()); })); map.on('load', render); map.on('styledata', render); render(); }
+	function boot() { bindButtons(); if (window.WildMapsAdminMap) bindMap(window.WildMapsAdminMap); var s = store(); if (s && s.on && !s.__swmActiveRouteStopsRenderBound) { s.__swmActiveRouteStopsRenderBound = true; s.on('change', render); } window.setTimeout(boot, 500); }
 	window.addEventListener('wildmaps:admin-map-ready', function (event) { bindMap(event.detail && event.detail.map); });
 	if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
 })(window, document);
